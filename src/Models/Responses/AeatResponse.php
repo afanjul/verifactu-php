@@ -167,7 +167,7 @@ class AeatResponse extends Model {
      */
     #[Assert\NotBlank]
     #[Assert\Positive]
-    public int $waitSeconds;
+    public ?int $waitSeconds = null;
 
     /**
      * Estado global del envío
@@ -175,7 +175,7 @@ class AeatResponse extends Model {
      * @field EstadoEnvio
      */
     #[Assert\NotBlank]
-    public ResponseStatus $status;
+    public ?ResponseStatus $status = null;
 
     /**
      * Estado detallado de cada línea del suministro
