@@ -7,11 +7,14 @@ use GuzzleHttp\Promise\PromiseInterface;
 use InvalidArgumentException;
 use josemmo\Verifactu\Exceptions\AeatException;
 use josemmo\Verifactu\Models\ComputerSystem;
+use josemmo\Verifactu\Models\Queries\QueryFilter;
 use josemmo\Verifactu\Models\Records\CancellationRecord;
 use josemmo\Verifactu\Models\Records\FiscalIdentifier;
+use josemmo\Verifactu\Models\Records\ForeignFiscalIdentifier;
 use josemmo\Verifactu\Models\Records\Record;
 use josemmo\Verifactu\Models\Records\RegistrationRecord;
 use josemmo\Verifactu\Models\Responses\AeatResponse;
+use josemmo\Verifactu\Models\Responses\QueryResponse;
 use Psr\Http\Client\ClientExceptionInterface;
 use Psr\Http\Message\ResponseInterface;
 use SensitiveParameter;
@@ -23,8 +26,12 @@ use UXML\UXML;
 class AeatClient {
     /** SOAP envelope XML namespace */
     public const NS_SOAPENV = 'http://schemas.xmlsoap.org/soap/envelope/';
-    /** Client XML namespace */
+    /** Submission XML namespace (SuministroLR) */
     public const NS_AEAT = 'https://www2.agenciatributaria.gob.es/static_files/common/internet/dep/aplicaciones/es/aeat/tike/cont/ws/SuministroLR.xsd';
+    /** Query XML namespace (ConsultaLR) */
+    public const NS_AEAT_CONSULTA = 'https://www2.agenciatributaria.gob.es/static_files/common/internet/dep/aplicaciones/es/aeat/tike/cont/ws/ConsultaLR.xsd';
+    /** Current schema version used for IDVersion fields */
+    public const SCHEMA_VERSION = '1.0';
 
     private readonly ComputerSystem $system;
     private readonly FiscalIdentifier $taxpayer;
@@ -218,6 +225,132 @@ class AeatClient {
                 }
             })
             ->then(fn (UXML $xml): AeatResponse => AeatResponse::from($xml));
+    }
+
+    /**
+     * Query submitted invoicing records (voluntary remission «VERIFACTU» only)
+     *
+     * @param QueryFilter $filter             Query filter parameters
+     * @param bool        $showIssuerName     Include NombreRazonEmisor field in response (increases response time for recipient queries)
+     * @param bool        $showComputerSystem Include SistemaInformatico block in response (must be false for recipient queries)
+     *
+     * @return PromiseInterface Response from service
+     *
+     * @throws AeatException            if AEAT server returned an error
+     * @throws ClientExceptionInterface if request sending failed
+     */
+    public function query(
+        QueryFilter $filter,
+        bool $showIssuerName = false,
+        bool $showComputerSystem = false,
+    ): PromiseInterface {
+        // Build initial request
+        $xml = UXML::newInstance('soapenv:Envelope', null, [
+            'xmlns:soapenv' => self::NS_SOAPENV,
+            'xmlns:con' => self::NS_AEAT_CONSULTA,
+            'xmlns:sum1' => Record::NS,
+        ]);
+        $xml->add('soapenv:Header');
+        $baseElement = $xml->add('soapenv:Body')->add('con:ConsultaFactuSistemaFacturacion');
+
+        // Add header
+        $cabeceraElement = $baseElement->add('con:Cabecera');
+        $cabeceraElement->add('con:IDVersion', self::SCHEMA_VERSION);
+        $obligadoEmisionElement = $cabeceraElement->add('con:ObligadoEmision');
+        $obligadoEmisionElement->add('sum1:NombreRazon', $this->taxpayer->name);
+        $obligadoEmisionElement->add('sum1:NIF', $this->taxpayer->nif);
+        if ($this->representative !== null) {
+            $cabeceraElement->add('con:IndicadorRepresentante', 'S');
+        }
+
+        // Add filter
+        $filtroElement = $baseElement->add('con:FiltroConsulta');
+        $periodoElement = $filtroElement->add('con:PeriodoImputacion');
+        $periodoElement->add('con:Ejercicio', (string) $filter->year);
+        $periodoElement->add('con:Periodo', $filter->period);
+
+        if ($filter->invoiceNumber !== null) {
+            $filtroElement->add('con:NumSerieFactura', $filter->invoiceNumber);
+        }
+
+        if ($filter->counterpart !== null) {
+            $contraparteElement = $filtroElement->add('con:Contraparte');
+            $contraparteElement->add('sum1:NombreRazon', $filter->counterpart->name);
+            $contraparteElement->add('sum1:NIF', $filter->counterpart->nif);
+        } elseif ($filter->foreignCounterpart !== null) {
+            $fc = $filter->foreignCounterpart;
+            $contraparteElement = $filtroElement->add('con:Contraparte');
+            $contraparteElement->add('sum1:NombreRazon', $fc->name);
+            $idOtroElement = $contraparteElement->add('sum1:IDOtro');
+            $idOtroElement->add('sum1:CodigoPais', $fc->country);
+            $idOtroElement->add('sum1:IDType', $fc->type->value);
+            $idOtroElement->add('sum1:ID', $fc->value);
+        }
+
+        if ($filter->exactIssueDate !== null) {
+            $fechaExpedicionElement = $filtroElement->add('con:FechaExpedicionFactura');
+            $fechaExpedicionElement->add('con:FechaExpedicionFactura', $filter->exactIssueDate->format('d-m-Y'));
+        } elseif ($filter->issueDateFrom !== null || $filter->issueDateTo !== null) {
+            $rangoElement = $filtroElement->add('con:RangoFechaExpedicion');
+            if ($filter->issueDateFrom !== null) {
+                $rangoElement->add('con:Desde', $filter->issueDateFrom->format('d-m-Y'));
+            }
+            if ($filter->issueDateTo !== null) {
+                $rangoElement->add('con:Hasta', $filter->issueDateTo->format('d-m-Y'));
+            }
+        }
+
+        if ($filter->externalRef !== null) {
+            $filtroElement->add('con:RefExterna', $filter->externalRef);
+        }
+
+        if ($filter->paginationKey !== null) {
+            $pk = $filter->paginationKey;
+            $claveElement = $filtroElement->add('con:ClavePaginacion');
+            $claveElement->add('sum1:IDEmisorFactura', $pk->issuerId);
+            $claveElement->add('sum1:NumSerieFactura', $pk->invoiceNumber);
+            $claveElement->add('sum1:FechaExpedicionFactura', $pk->issueDate->format('d-m-Y'));
+        }
+
+        // Add optional response flags
+        if ($showIssuerName || $showComputerSystem) {
+            $datosAdicionalesElement = $baseElement->add('con:DatosAdicionalesRespuesta');
+            if ($showIssuerName) {
+                $datosAdicionalesElement->add('con:MostrarNombreRazonEmisor', 'S');
+            }
+            if ($showComputerSystem) {
+                $datosAdicionalesElement->add('con:MostrarSistemaInformatico', 'S');
+            }
+        }
+
+        // Send request
+        $options = [
+            'base_uri' => $this->getBaseUri(),
+            'http_errors' => false,
+            'headers' => [
+                'Content-Type' => 'text/xml',
+                'User-Agent' => "Mozilla/5.0 (compatible; {$this->system->name}/{$this->system->version})",
+            ],
+            'body' => $xml->asXML(),
+        ];
+        if ($this->certificatePath !== null) {
+            $options['cert'] = ($this->certificatePassword === null) ?
+                $this->certificatePath :
+                [$this->certificatePath, $this->certificatePassword];
+        }
+        $responsePromise = $this->client->postAsync('/wlpl/TIKE-CONT/ws/SistemaFacturacion/VerifactuSOAP', $options);
+
+        // Parse and return response
+        return $responsePromise
+            ->then(fn (ResponseInterface $response): string => $response->getBody()->getContents())
+            ->then(function (string $response): UXML {
+                try {
+                    return UXML::fromString($response);
+                } catch (InvalidArgumentException $e) {
+                    throw new AeatException('Failed to parse XML response', previous: $e);
+                }
+            })
+            ->then(fn (UXML $xml): QueryResponse => QueryResponse::from($xml));
     }
 
     /**
