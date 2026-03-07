@@ -1,3 +1,27 @@
+# ¿Qué se ha hecho?
+
+## Fork privado
+El repositorio `josemmo/Verifactu-PHP` ha sido clonado como fork privado en `afanjul/verifactu-php` con todos los tags (`v0.0.1` → `v0.3.4`).
+
+El [composer.json](composer.json) apunta al fork privado como VCS repository usando la rama `develop`. Composer preferirá el fork sobre Packagist automáticamente al compartir el mismo package name (`josemmo/verifactu-php`).
+
+### Estructura de ramas
+- `main`: mirror limpio del upstream, nunca se toca directamente
+- `develop`: rama de trabajo con los cambios custom, usada por facturacheck
+
+### Sincronizar cambios del upstream
+```bash
+cd ~/apps/verifactu-php
+git checkout main
+git fetch upstream          # upstream = https://github.com/josemmo/Verifactu-PHP
+git merge upstream/main
+git push origin main
+
+git checkout develop
+git merge main
+git push origin develop
+
+
 # Verifactu-PHP
 [![CI](https://github.com/josemmo/Verifactu-PHP/workflows/CI/badge.svg)](https://github.com/josemmo/Verifactu-PHP/actions)
 [![Última versión estable](https://img.shields.io/packagist/v/josemmo/verifactu-php)](https://packagist.org/packages/josemmo/verifactu-php)
