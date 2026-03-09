@@ -8,5 +8,6 @@ Documentación
    modelos
    generacion
    comunicacion
+   consulta
    codigos-qr
    certificacion
