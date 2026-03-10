@@ -10,6 +10,8 @@ Algunos de los ejemplos más reprensentativos de modelos de esta librería son:
 * :php:class:`josemmo\Verifactu\Models\Records\BreakdownDetails`: Detalle de desglose fiscal por cada tipo impositivo aplicado.
 * :php:class:`josemmo\Verifactu\Models\ComputerSystem`: Datos del sistema informático emisor (SIF). Este objeto se usa para informar a AEAT sobre el software que genera los registros.
 * :php:class:`josemmo\Verifactu\Models\Responses\AeatResponse`: Datos parseados de una respuesta recibida de una comunicación con el servidor de la AEAT.
+* :php:class:`josemmo\Verifactu\Models\Events\EventRecord`: Registro de evento del SIF (inicio/parada, anomalías, exportaciones, resumen periódico). Véase :doc:`eventos`.
+* :php:class:`josemmo\Verifactu\Models\Events\EventType`: Enum con los tipos de evento de la tabla L2E (valores ``01``--``10`` y ``90``).
 
 Validación
 ----------

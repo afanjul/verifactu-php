@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sf:RegistroEvento xmlns:sf="https://www2.agenciatributaria.gob.es/static_files/common/internet/dep/aplicaciones/es/aeat/tike/cont/ws/EventosSIF.xsd">
+    <sf:IDVersion>1.0</sf:IDVersion>
+    <sf:Evento>
+        <sf:SistemaInformatico>
+            <sf:NombreRazon>Perico de los Palotes, S.A.</sf:NombreRazon>
+            <sf:NIF>A00000000</sf:NIF>
+            <sf:NombreSistemaInformatico>Test SIF</sf:NombreSistemaInformatico>
+            <sf:IdSistemaInformatico>TS</sf:IdSistemaInformatico>
+            <sf:Version>0.0.1</sf:Version>
+            <sf:NumeroInstalacion>01234</sf:NumeroInstalacion>
+            <sf:TipoUsoPosibleSoloVerifactu>S</sf:TipoUsoPosibleSoloVerifactu>
+            <sf:TipoUsoPosibleMultiOT>N</sf:TipoUsoPosibleMultiOT>
+            <sf:IndicadorMultiplesOT>N</sf:IndicadorMultiplesOT>
+        </sf:SistemaInformatico>
+        <sf:ObligadoEmision>
+            <sf:NombreRazon>Empresa Ejemplo SL</sf:NombreRazon>
+            <sf:NIF>B00000001</sf:NIF>
+        </sf:ObligadoEmision>
+        <sf:FechaHoraHusoGenEvento>2024-01-01T19:20:30+01:00</sf:FechaHoraHusoGenEvento>
+        <sf:TipoEvento>10</sf:TipoEvento>
+        <sf:Encadenamiento>
+            <sf:EventoAnterior>
+                <sf:TipoEvento>10</sf:TipoEvento>
+                <sf:FechaHoraHusoGenEvento>2024-01-01T13:20:30+01:00</sf:FechaHoraHusoGenEvento>
+                <sf:HuellaEvento>E9714B49E59CBCE753FE1D4A4FDA1D34DED66F6A54C3FF6BD52C38520C2361E1</sf:HuellaEvento>
+            </sf:EventoAnterior>
+        </sf:Encadenamiento>
+    </sf:Evento>
+    <sf:TipoHuella>01</sf:TipoHuella>
+    <sf:HuellaEvento>AF6FBD2CF071E3A09280F94672E61053CF27BBA9B68BAD6D38F0EE5434B95695</sf:HuellaEvento>
+</sf:RegistroEvento>
