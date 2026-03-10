@@ -7,7 +7,9 @@ Documentación
    introduccion
    modelos
    generacion
+   operativas
    comunicacion
    consulta
    codigos-qr
+   aclaraciones
    certificacion

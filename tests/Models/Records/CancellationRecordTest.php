@@ -5,6 +5,8 @@ use DateTimeImmutable;
 use josemmo\Verifactu\Exceptions\InvalidModelException;
 use josemmo\Verifactu\Models\ComputerSystem;
 use josemmo\Verifactu\Models\Records\CancellationRecord;
+use josemmo\Verifactu\Models\Records\FiscalIdentifier;
+use josemmo\Verifactu\Models\Records\GeneratedByType;
 use josemmo\Verifactu\Models\Records\InvoiceIdentifier;
 use josemmo\Verifactu\Models\Records\Record;
 use josemmo\Verifactu\Tests\TestUtils;
@@ -22,24 +24,19 @@ final class CancellationRecordTest extends TestCase {
         ];
     }
 
-    public function testRequiresPreviousInvoice(): void {
+    public function testAllowsPrimerRegistro(): void {
         $record = new CancellationRecord();
         $record->invoiceId = new InvoiceIdentifier();
         $record->invoiceId->issuerId = '89890001K';
         $record->invoiceId->invoiceNumber = '12345679/G34';
         $record->invoiceId->issueDate = new DateTimeImmutable('2024-01-01');
-        $record->previousInvoiceId = null; // This is not allowed
-        $record->previousHash = null; // This is not allowed
+        $record->previousInvoiceId = null; // PrimerRegistro allowed
+        $record->previousHash = null; // PrimerRegistro allowed
         $record->hashedAt = new DateTimeImmutable('2024-01-01T19:20:40+01:00');
         $record->hash = $record->calculateHash();
-        try {
-            $record->validate();
-            $this->fail('Did not throw exception for missing previous invoice');
-        } catch (InvalidModelException $e) {
-            $this->assertStringContainsString('Previous invoice ID is required', $e->getMessage());
-            $this->assertStringContainsString('Previous hash is required', $e->getMessage());
-        }
+        $record->validate(); // Should NOT throw
 
+        // But providing only one of them should still fail
         $record->previousInvoiceId = new InvoiceIdentifier();
         $record->previousInvoiceId->issuerId = '89890001K';
         $record->previousInvoiceId->invoiceNumber = '12345679/G34';
@@ -47,7 +44,7 @@ final class CancellationRecordTest extends TestCase {
         $record->hash = $record->calculateHash();
         try {
             $record->validate();
-            $this->fail('Did not throw exception for missing previous hash');
+            $this->fail('Did not throw exception when previousInvoiceId set without previousHash');
         } catch (InvalidModelException $e) {
             $this->assertStringContainsString('Previous hash is required', $e->getMessage());
         }
@@ -87,5 +84,25 @@ final class CancellationRecordTest extends TestCase {
         $exportedXml = UXML::newInstance('container', null, ['xmlns:sum1' => Record::NS]);
         $record->export($exportedXml, $computerSystem);
         $this->assertXmlStringEqualsXmlString($modelXml, $exportedXml->get('sum1:RegistroAnulacion')?->asXML() ?? '');
+    }
+
+    public function testAllGeneratedByTypeValues(): void {
+        $record = new CancellationRecord();
+        $record->invoiceId = new InvoiceIdentifier('89890001K', '12345679/G34', new DateTimeImmutable('2024-01-01'));
+        $record->previousInvoiceId = null;
+        $record->previousHash = null;
+        $record->hashedAt = new DateTimeImmutable('2024-01-01T19:20:40+01:00');
+        $generator = new FiscalIdentifier('Generador SA', 'B00000001');
+
+        foreach (GeneratedByType::cases() as $generatedByType) {
+            $record->generatedBy = $generatedByType;
+            $record->generator = $generator;
+            $record->hash = $record->calculateHash();
+            $record->validate(); // All three values (E, D, T) must be valid
+        }
+
+        // Verify 'E' (Issuer) specifically exists in the enum
+        $this->assertEquals('E', GeneratedByType::Issuer->value);
+        $this->assertEquals(3, count(GeneratedByType::cases()));
     }
 }

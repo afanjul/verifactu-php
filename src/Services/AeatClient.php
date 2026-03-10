@@ -10,7 +10,6 @@ use josemmo\Verifactu\Models\ComputerSystem;
 use josemmo\Verifactu\Models\Queries\QueryFilter;
 use josemmo\Verifactu\Models\Records\CancellationRecord;
 use josemmo\Verifactu\Models\Records\FiscalIdentifier;
-use josemmo\Verifactu\Models\Records\ForeignFiscalIdentifier;
 use josemmo\Verifactu\Models\Records\Record;
 use josemmo\Verifactu\Models\Records\RegistrationRecord;
 use josemmo\Verifactu\Models\Responses\AeatResponse;
@@ -152,6 +151,23 @@ class AeatClient {
     }
 
     /**
+     * Sleep for the required wait time after receiving a response
+     *
+     * The AEAT server may require the SIF to wait a certain number of seconds
+     * before sending the next submission. Ignoring this may cause rejections.
+     *
+     * @param AeatResponse $response Response from a previous send() call
+     *
+     * @return $this This instance
+     */
+    public function waitIfNeeded(AeatResponse $response): static {
+        if ($response->waitSeconds !== null && $response->waitSeconds > 0) {
+            sleep($response->waitSeconds);
+        }
+        return $this;
+    }
+
+    /**
      * Send invoicing records
      *
      * @param (RegistrationRecord|CancellationRecord)[] $records Invoicing records
@@ -162,6 +178,10 @@ class AeatClient {
      * @throws ClientExceptionInterface if request sending failed
      */
     public function send(array $records): PromiseInterface { /** @phpstan-ignore generics.notGeneric */
+        if (count($records) < 1 || count($records) > 1000) {
+            throw new InvalidArgumentException('Records count must be between 1 and 1000');
+        }
+
         // Build initial request
         $xml = UXML::newInstance('soapenv:Envelope', null, [
             'xmlns:soapenv' => self::NS_SOAPENV,

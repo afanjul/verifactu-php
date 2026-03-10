@@ -3,6 +3,7 @@ namespace josemmo\Verifactu\Tests\Models;
 
 use josemmo\Verifactu\Exceptions\AeatException;
 use josemmo\Verifactu\Models\Responses\AeatResponse;
+use josemmo\Verifactu\Models\Responses\DuplicateRecordStatus;
 use josemmo\Verifactu\Models\Responses\ItemStatus;
 use josemmo\Verifactu\Models\Responses\RecordType;
 use josemmo\Verifactu\Models\Responses\ResponseStatus;
@@ -164,6 +165,46 @@ final class AeatResponseTest extends TestCase {
             $this->fail('Did not throw exception for server error response');
         } catch (AeatException $e) {
             $this->assertStringContainsString('Codigo[20009].Error interno en el servidor', $e->getMessage());
+        }
+    }
+
+    public function testParsesDuplicateRecordStatus(): void {
+        $nsTikr = 'https://www2.agenciatributaria.gob.es/static_files/common/internet/dep/aplicaciones/es/aeat/tike/cont/ws/RespuestaSuministro.xsd';
+        $nsTik  = 'https://www2.agenciatributaria.gob.es/static_files/common/internet/dep/aplicaciones/es/aeat/tike/cont/ws/SuministroInformacion.xsd';
+
+        foreach ([
+            'Correcto'           => DuplicateRecordStatus::Correct,
+            'AceptadoConErrores' => DuplicateRecordStatus::AcceptedWithErrors,
+            'Anulada'            => DuplicateRecordStatus::Cancelled,
+        ] as $xmlValue => $expectedStatus) {
+            $xml = UXML::fromString(<<<XML
+            <?xml version="1.0" encoding="UTF-8"?>
+            <env:Envelope xmlns:env="http://schemas.xmlsoap.org/soap/envelope/"
+                          xmlns:tikR="$nsTikr"
+                          xmlns:tik="$nsTik">
+                <env:Header/>
+                <env:Body>
+                    <tikR:RespuestaRegFactuSistemaFacturacion>
+                        <tikR:TiempoEsperaEnvio>60</tikR:TiempoEsperaEnvio>
+                        <tikR:EstadoEnvio>Correcto</tikR:EstadoEnvio>
+                        <tikR:RespuestaLinea>
+                            <tikR:IDFactura>
+                                <tik:IDEmisorFactura>A00000000</tik:IDEmisorFactura>
+                                <tik:NumSerieFactura>FACT-001</tik:NumSerieFactura>
+                                <tik:FechaExpedicionFactura>01-01-2025</tik:FechaExpedicionFactura>
+                            </tikR:IDFactura>
+                            <tikR:Operacion>
+                                <tik:TipoOperacion>Alta</tik:TipoOperacion>
+                            </tikR:Operacion>
+                            <tikR:EstadoRegistro>Correcto</tikR:EstadoRegistro>
+                            <tikR:EstadoRegistroDuplicado>$xmlValue</tikR:EstadoRegistroDuplicado>
+                        </tikR:RespuestaLinea>
+                    </tikR:RespuestaRegFactuSistemaFacturacion>
+                </env:Body>
+            </env:Envelope>
+            XML);
+            $response = AeatResponse::from($xml);
+            $this->assertSame($expectedStatus, $response->items[0]->duplicateStatus, "Failed for '$xmlValue'");
         }
     }
 }

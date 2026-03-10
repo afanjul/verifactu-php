@@ -132,6 +132,12 @@ class AeatResponse extends Model {
                 $item->errorDescription = $errorDescriptionElement->asText();
             }
 
+            // Parse duplicate status
+            $duplicateStatusElement = $itemElement->get("{{$nsTikr}}EstadoRegistroDuplicado");
+            if ($duplicateStatusElement !== null) {
+                $item->duplicateStatus = DuplicateRecordStatus::tryFrom($duplicateStatusElement->asText());
+            }
+
             $instance->items[] = $item;
         }
 
@@ -162,6 +168,8 @@ class AeatResponse extends Model {
      * Segundos de espera entre envíos
      *
      * Para poder realizar el siguiente envío, el SIF deberá esperar a que transcurran X segundos.
+     * Use AeatClient::waitIfNeeded() to respect this value automatically.
+     * Failure to wait may result in submission rejections by the AEAT.
      *
      * @field TiempoEsperaEnvio
      */

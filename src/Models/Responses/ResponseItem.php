@@ -58,4 +58,11 @@ class ResponseItem extends Model {
      * @field DescripcionErrorRegistro
      */
     public ?string $errorDescription = null;
+
+    /**
+     * Estado del registro duplicado
+     *
+     * @field EstadoRegistroDuplicado
+     */
+    public ?DuplicateRecordStatus $duplicateStatus = null;
 }

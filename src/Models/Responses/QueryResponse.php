@@ -2,13 +2,13 @@
 namespace josemmo\Verifactu\Models\Responses;
 
 use DateTimeImmutable;
+use InvalidArgumentException;
 use josemmo\Verifactu\Exceptions\AeatException;
 use josemmo\Verifactu\Models\Model;
 use josemmo\Verifactu\Models\Queries\QueryPaginationKey;
 use josemmo\Verifactu\Models\Records\InvoiceIdentifier;
 use josemmo\Verifactu\Models\Records\Record;
 use josemmo\Verifactu\Services\AeatClient;
-use InvalidArgumentException;
 use Symfony\Component\Validator\Constraints as Assert;
 use UXML\UXML;
 

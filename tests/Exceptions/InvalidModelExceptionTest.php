@@ -14,8 +14,11 @@ final class InvalidModelExceptionTest extends TestCase {
         $record->invoiceId->issuerId = '89890001K';
         $record->invoiceId->invoiceNumber = '12345679/G34';
         $record->invoiceId->issueDate = new DateTimeImmutable('2024-01-01');
-        $record->previousInvoiceId = null; // This is not allowed
-        $record->previousHash = null; // This is not allowed
+        $record->previousInvoiceId = new InvoiceIdentifier();
+        $record->previousInvoiceId->issuerId = '89890001K';
+        $record->previousInvoiceId->invoiceNumber = '12345679/G34';
+        $record->previousInvoiceId->issueDate = new DateTimeImmutable('2024-01-01');
+        $record->previousHash = null; // Missing hash with previousInvoiceId set
         $record->hashedAt = new DateTimeImmutable('2024-01-01T19:20:40+01:00');
         $record->hash = $record->calculateHash();
         try {
@@ -25,10 +28,8 @@ final class InvalidModelExceptionTest extends TestCase {
             $actual = $e->getMessage();
             $expected = <<<TXT
             Invalid instance of model class:
-            - Object(josemmo\Verifactu\Models\Records\CancellationRecord).previousInvoiceId:
-                Previous invoice ID is required for all cancellation records
             - Object(josemmo\Verifactu\Models\Records\CancellationRecord).previousHash:
-                Previous hash is required for all cancellation records
+                Previous hash is required if previous invoice ID is provided
             TXT;
             $this->assertEquals($expected, $actual);
         }

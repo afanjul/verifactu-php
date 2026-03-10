@@ -2,6 +2,7 @@
 namespace josemmo\Verifactu\Tests\Services;
 
 use DateTimeImmutable;
+use InvalidArgumentException;
 use josemmo\Verifactu\Models\Records\InvoiceIdentifier;
 use josemmo\Verifactu\Models\Records\RegistrationRecord;
 use josemmo\Verifactu\Services\QrGenerator;
@@ -34,6 +35,23 @@ final class QrGeneratorTest extends TestCase {
             'https://www2.agenciatributaria.gob.es/wlpl/TIKE-CONT/ValidarQR?nif=A86018322&numserie=FACT001&fecha=01-10-2025&importe=100.23',
             $service->fromInvoiceId(new InvoiceIdentifier('A86018322', 'FACT001', new DateTimeImmutable('2025-10-01')), '100.23'),
         );
+    }
+
+    public function testRejectsNonAsciiParameters(): void {
+        $service = new QrGenerator();
+        try {
+            $service->from('A860183²²', 'FACT001', new DateTimeImmutable('2025-10-01'), '100.23');
+            $this->fail('Did not throw for non-ASCII nif');
+        } catch (InvalidArgumentException $e) {
+            $this->assertStringContainsString("'nif'", $e->getMessage());
+        }
+
+        try {
+            $service->from('A86018322', 'FACTURA-ñ', new DateTimeImmutable('2025-10-01'), '100.23');
+            $this->fail('Did not throw for non-ASCII numserie');
+        } catch (InvalidArgumentException $e) {
+            $this->assertStringContainsString("'numserie'", $e->getMessage());
+        }
     }
 
     public function testGeneratesLinksFromRegistrationRecord(): void {

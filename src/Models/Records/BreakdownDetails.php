@@ -48,6 +48,16 @@ class BreakdownDetails extends Model {
     public string $baseAmount;
 
     /**
+     * Base imponible calculada conforme al importe de adquisición o coste
+     *
+     * Solo obligatorio para el régimen C06 (Grupo de Entidades en IVA)
+     *
+     * @field BaseImponibleACoste
+     */
+    #[Assert\Regex(pattern: '/^-?\d{1,12}\.\d{2}$/')]
+    public ?string $baseCostAmount = null;
+
+    /**
      * Porcentaje aplicado sobre la base imponible para calcular la cuota
      *
      * @field TipoImpositivo
@@ -131,6 +141,12 @@ class BreakdownDetails extends Model {
         }
         $model->baseAmount = $baseAmount;
 
+        // Base cost amount
+        $baseCostAmount = $xml->get('sum1:BaseImponibleACoste')?->asText();
+        if ($baseCostAmount !== null) {
+            $model->baseCostAmount = $baseCostAmount;
+        }
+
         // Tax rate
         $taxRate = $xml->get('sum1:TipoImpositivo')?->asText();
         if ($taxRate !== null) {
@@ -189,6 +205,18 @@ class BreakdownDetails extends Model {
                     ->atPath('surchargeAmount')
                     ->addViolation();
             }
+        }
+    }
+
+    #[Assert\Callback]
+    final public function validateBaseCostAmount(ExecutionContextInterface $context): void {
+        if (!isset($this->regimeType)) {
+            return;
+        }
+        if ($this->regimeType === RegimeType::C06 && $this->baseCostAmount === null) {
+            $context->buildViolation('Base cost amount is required for C06 regime type')
+                ->atPath('baseCostAmount')
+                ->addViolation();
         }
     }
 
@@ -276,6 +304,11 @@ class BreakdownDetails extends Model {
 
         // Base amount
         $element->add('sum1:BaseImponibleOimporteNoSujeto', $this->baseAmount);
+
+        // Base cost amount
+        if ($this->baseCostAmount !== null) {
+            $element->add('sum1:BaseImponibleACoste', $this->baseCostAmount);
+        }
 
         // Tax amount
         if ($this->taxAmount !== null) {

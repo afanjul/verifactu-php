@@ -12,6 +12,7 @@ use josemmo\Verifactu\Models\Records\ForeignIdType;
 use josemmo\Verifactu\Models\Records\InvoiceIdentifier;
 use josemmo\Verifactu\Models\Records\InvoiceType;
 use josemmo\Verifactu\Models\Records\OperationType;
+use josemmo\Verifactu\Models\Records\PreviousRejectionType;
 use josemmo\Verifactu\Models\Records\Record;
 use josemmo\Verifactu\Models\Records\RegimeType;
 use josemmo\Verifactu\Models\Records\RegistrationRecord;
@@ -112,18 +113,18 @@ final class RegistrationRecordTest extends TestCase {
 
         // Should pass validation
         $record->isCorrection = true;
-        $record->isPriorRejection = false;
+        $record->isPriorRejection = PreviousRejectionType::N;
         $record->validate();
 
         // Should also pass validation
         $record->isCorrection = true;
-        foreach ([true, null] as $priorRejectionValue) {
+        foreach ([PreviousRejectionType::S, PreviousRejectionType::X] as $priorRejectionValue) {
             $record->isPriorRejection = $priorRejectionValue;
             $record->validate();
         }
 
         // Prior rejection requires correction flag
-        foreach ([true, null] as $priorRejectionValue) {
+        foreach ([PreviousRejectionType::S, PreviousRejectionType::X] as $priorRejectionValue) {
             $record->isCorrection = false;
             $record->isPriorRejection = $priorRejectionValue;
             try {

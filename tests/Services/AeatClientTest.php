@@ -8,6 +8,7 @@ use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Response;
+use InvalidArgumentException;
 use josemmo\Verifactu\Exceptions\AeatException;
 use josemmo\Verifactu\Models\ComputerSystem;
 use josemmo\Verifactu\Models\Records\CancellationRecord;
@@ -66,6 +67,18 @@ final class AeatClientTest extends TestCase {
         $record->hash = $record->calculateHash();
         $record->validate();
         return $record;
+    }
+
+    public function testValidatesBatchSize(): void {
+        $client = $this->getMockedClient(new Response(200, [], '<ok/>'));
+
+        // Empty batch should fail
+        try {
+            $client->send([])->wait();
+            $this->fail('Did not throw for empty batch');
+        } catch (InvalidArgumentException $e) {
+            $this->assertStringContainsString('between 1 and 1000', $e->getMessage());
+        }
     }
 
     public function testThrowsExceptionForMalformedXmlResponse(): void {

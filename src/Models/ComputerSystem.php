@@ -2,7 +2,9 @@
 namespace josemmo\Verifactu\Models;
 
 use josemmo\Verifactu\Exceptions\ImportException;
+use josemmo\Verifactu\Models\Records\ForeignIdType;
 use Symfony\Component\Validator\Constraints as Assert;
+use Symfony\Component\Validator\Context\ExecutionContextInterface;
 use UXML\UXML;
 
 /**
@@ -25,9 +27,30 @@ class ComputerSystem extends Model {
      *
      * @field NIF
      */
-    #[Assert\NotBlank]
-    #[Assert\Length(exactly: 9)]
-    public string $vendorNif;
+    public ?string $vendorNif = null;
+
+    /**
+     * Código del país del proveedor (solo cuando el proveedor no tiene NIF español)
+     *
+     * @field IDOtro/CodigoPais
+     */
+    #[Assert\Length(exactly: 2)]
+    public ?string $vendorCountry = null;
+
+    /**
+     * Tipo de identificación del proveedor extranjero
+     *
+     * @field IDOtro/IDType
+     */
+    public ?ForeignIdType $vendorIdType = null;
+
+    /**
+     * Identificación del proveedor extranjero
+     *
+     * @field IDOtro/ID
+     */
+    #[Assert\Length(max: 20)]
+    public ?string $vendorId = null;
 
     /**
      * Nombre dado por la persona o entidad productora a su sistema informático de facturación (SIF)
@@ -44,7 +67,7 @@ class ComputerSystem extends Model {
      * @field IdSistemaInformatico
      */
     #[Assert\NotBlank]
-    #[Assert\Length(max: 2)]
+    #[Assert\Regex(pattern: '/^[A-Z0-9]{2}$/', message: 'IdSistemaInformatico must be exactly 2 uppercase letters (excluding Ñ) or digits')]
     public string $id;
 
     /**
@@ -92,6 +115,50 @@ class ComputerSystem extends Model {
     #[Assert\Type('boolean')]
     public bool $hasMultipleTaxpayers;
 
+    #[Assert\Callback]
+    final public function validateVendorIdentifier(ExecutionContextInterface $context): void {
+        $hasNif = $this->vendorNif !== null && $this->vendorNif !== '';
+        $hasIdOtro = $this->vendorCountry !== null || $this->vendorIdType !== null || $this->vendorId !== null;
+
+        if (!$hasNif && !$hasIdOtro) {
+            $context->buildViolation('Either vendorNif or vendorCountry/vendorIdType/vendorId must be set')
+                ->atPath('vendorNif')
+                ->addViolation();
+            return;
+        }
+
+        if ($hasNif && $hasIdOtro) {
+            $context->buildViolation('Cannot set both vendorNif and foreign vendor identifier (IDOtro)')
+                ->atPath('vendorNif')
+                ->addViolation();
+            return;
+        }
+
+        if ($hasNif && strlen($this->vendorNif ?? '') !== 9) {
+            $context->buildViolation('vendorNif must be exactly 9 characters')
+                ->atPath('vendorNif')
+                ->addViolation();
+        }
+
+        if ($hasIdOtro) {
+            if ($this->vendorCountry === null) {
+                $context->buildViolation('vendorCountry is required for foreign vendor identifier')
+                    ->atPath('vendorCountry')
+                    ->addViolation();
+            }
+            if ($this->vendorIdType === null) {
+                $context->buildViolation('vendorIdType is required for foreign vendor identifier')
+                    ->atPath('vendorIdType')
+                    ->addViolation();
+            }
+            if ($this->vendorId === null) {
+                $context->buildViolation('vendorId is required for foreign vendor identifier')
+                    ->atPath('vendorId')
+                    ->addViolation();
+            }
+        }
+    }
+
     /**
      * Import instance from XML element
      *
@@ -111,12 +178,18 @@ class ComputerSystem extends Model {
         }
         $model->vendorName = $vendorName;
 
-        // Vendor NIF
+        // Vendor NIF (or IDOtro for foreign vendors)
         $vendorNif = $xml->get('sum1:NIF')?->asText();
-        if ($vendorNif === null) {
-            throw new ImportException('Missing <sum1:NIF /> element');
+        if ($vendorNif !== null) {
+            $model->vendorNif = $vendorNif;
+        } else {
+            $model->vendorCountry = $xml->get('sum1:IDOtro/sum1:CodigoPais')?->asText();
+            $rawVendorIdType = $xml->get('sum1:IDOtro/sum1:IDType')?->asText();
+            if ($rawVendorIdType !== null) {
+                $model->vendorIdType = ForeignIdType::tryFrom($rawVendorIdType);
+            }
+            $model->vendorId = $xml->get('sum1:IDOtro/sum1:ID')?->asText();
         }
-        $model->vendorNif = $vendorNif;
 
         // Name
         $name = $xml->get('sum1:NombreSistemaInformatico')?->asText();
@@ -165,7 +238,14 @@ class ComputerSystem extends Model {
     public function export(UXML $xml): void {
         $element = $xml->add('sum1:SistemaInformatico');
         $element->add('sum1:NombreRazon', $this->vendorName);
-        $element->add('sum1:NIF', $this->vendorNif);
+        if ($this->vendorNif !== null) {
+            $element->add('sum1:NIF', $this->vendorNif);
+        } else {
+            $idOtroElement = $element->add('sum1:IDOtro');
+            $idOtroElement->add('sum1:CodigoPais', $this->vendorCountry);
+            $idOtroElement->add('sum1:IDType', $this->vendorIdType?->value);
+            $idOtroElement->add('sum1:ID', $this->vendorId);
+        }
         $element->add('sum1:NombreSistemaInformatico', $this->name);
         $element->add('sum1:IdSistemaInformatico', $this->id);
         $element->add('sum1:Version', $this->version);

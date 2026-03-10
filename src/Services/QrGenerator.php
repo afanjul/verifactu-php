@@ -72,6 +72,13 @@ class QrGenerator {
      * @return string QR code URL
      */
     public function from(string $issuerId, string $invoiceNumber, DateTimeInterface $issueDate, string $amount): string {
+        // Validate ASCII 32-126 characters only
+        foreach (['nif' => $issuerId, 'numserie' => $invoiceNumber, 'importe' => $amount] as $param => $value) {
+            if (preg_match('/^[\x20-\x7E]*$/', $value) !== 1) {
+                throw new \InvalidArgumentException("Parameter '$param' contains non-ASCII characters");
+            }
+        }
+
         $url  = $this->isProduction ? 'https://www2.agenciatributaria.gob.es' : 'https://prewww2.aeat.es';
         $url .= '/wlpl/TIKE-CONT/';
         $url .= $this->isOnlineMode ? 'ValidarQR' : 'ValidarQRNoVerifactu';
