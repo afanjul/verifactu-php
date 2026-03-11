@@ -43,6 +43,11 @@ Envía los registros a la AEAT (hasta un máximo de 1000 por llamada):
 
     $aeatResponse = $client->send([$record])->wait();
 
+.. note::
+
+    El método :php:method:`josemmo\Verifactu\Services\AeatClient::send()` requiere entre 1 y 1000 registros por llamada.
+    Esta librería no expone un envío vacío solo para remitir cabecera.
+
 Procesa la respuesta.
 En caso de un envío correcto de registros de facturación, la respuesta contendrá un Código Seguro de Verificación (CSV):
 
@@ -56,6 +61,12 @@ En caso de un envío correcto de registros de facturación, la respuesta contend
         echo "Rejected: " . $aeatResponse->items[0]->errorDescription . "\n";
     }
 
+Si la respuesta incluye un tiempo de espera, respétalo antes del siguiente envío:
+
+.. code-block:: php
+
+    $client->waitIfNeeded($aeatResponse);
+
 Baja de remisión voluntaria
 --------------------------
 
@@ -66,11 +77,8 @@ Esto se puede hacer a través del método :php:method:`josemmo\Verifactu\Service
 
     use DateTimeImmutable;
 
-    // Configurar el cliente para enviar la fecha de baja a la AEAT en los envíos
+    // Configurar el cliente para enviar la fecha de baja a la AEAT en los siguientes envíos válidos
     $client->setVoluntaryRemissionEndDate(new DateTimeImmutable('2026-12-31'));
-
-    // Notificar fecha inmediatamente a la AEAT sin mandar registros
-    $client->send([])->wait();
 
 Requerimiento de información
 ----------------------------

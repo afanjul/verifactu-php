@@ -56,12 +56,12 @@ No debes detallar el importe de cada línea de la factura, sino la suma de la ba
     use josemmo\Verifactu\Models\Records\TaxType;
 
     $record->breakdown[] = new BreakdownDetails();
-    $record->breakdown[]->taxType = TaxType::IVA;
-    $record->breakdown[]->regimeType = RegimeType::C01;
-    $record->breakdown[]->operationType = OperationType::Subject; // Sujeto a IVA
-    $record->breakdown[]->baseAmount = '10.00'; // Base imponible
-    $record->breakdown[]->taxRate = '21.00'; // Tipo de IVA
-    $record->breakdown[]->taxAmount = '2.10'; // Cuota de IVA
+    $record->breakdown[0]->taxType = TaxType::IVA;
+    $record->breakdown[0]->regimeType = RegimeType::C01;
+    $record->breakdown[0]->operationType = OperationType::Subject; // Sujeto a IVA
+    $record->breakdown[0]->baseAmount = '10.00'; // Base imponible
+    $record->breakdown[0]->taxRate = '21.00'; // Tipo de IVA
+    $record->breakdown[0]->taxAmount = '2.10'; // Cuota de IVA
 
 
 Define los totales de la factura:
@@ -80,7 +80,7 @@ Encadena la factura con la anterior:
     $record->previousHash = null;
 
     // B. Si hay más registros antes de este (lo normal)
-    $record->previousInvoiceId = 'TICKET-2025-001';
+    $record->previousInvoiceId = new InvoiceIdentifier('A00000000', 'TICKET-2025-001', new DateTimeImmutable('2025-12-31'));
     $record->previousHash = 'F7B94CFD8924EDFF273501B01EE5153E4CE8F259766F88CF6ACB8935802A2B97';
 
 
@@ -159,6 +159,7 @@ Los registros de anulación se generar de forma muy similar a los de alta, aunqu
     $record->previousInvoiceId->issuerId = '89890001K';
     $record->previousInvoiceId->invoiceNumber = '12345679/G34';
     $record->previousInvoiceId->issueDate = new DateTimeImmutable('2024-01-01');
+    $record->hashedAt = new DateTimeImmutable();
     $record->hash = $record->calculateHash();
     $record->validate();
 

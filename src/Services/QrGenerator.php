@@ -8,6 +8,9 @@ use josemmo\Verifactu\Models\Records\RegistrationRecord;
 /**
  * Service to generate QR code URLs.
  *
+ * This service only generates the target URL to encode in the QR image; it does
+ * not render the image itself.
+ *
  * By default uses the production environment operating in online mode (VeriFactu mode).
  */
 class QrGenerator {

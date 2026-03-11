@@ -1,5 +1,8 @@
 # AGENTS.md
 
+This file is for contributors and AI agents working inside this repository.
+For downstream library consumers, the canonical integration sources are `README.md`, `docs/`, and `llms.txt`.
+
 ## 1. Project Overview & Scope
 **Verifactu-PHP** (`josemmo/verifactu-php`): PHP middleware library implementing the Spanish **VERI*FACTU** system (RD 1007/2023) for SIFs (Sistemas Informáticos de Facturación). Handles XML generation, hashing, and SOAP/TLS communication with AEAT.
 * **Scope limit:** Strictly limits to VERI*FACTU specs. No custom vendor logic.
@@ -16,6 +19,12 @@
   1. `composer lint` (Laravel Pint)
   2. `composer stan` (PHPStan Strict)
   3. `composer test` (PHPUnit - must cover new/mutated code)
+
+## 2.5. External Consumer Documentation Sources
+* `README.md`: primary entry point for integrators.
+* `docs/`: task-oriented and reference documentation for library consumers.
+* `llms.txt`: AI-oriented summary of the public API and workflows.
+* `AGENTS.md`: repository-specific contributor guidance, not the main external API guide.
 
 ## 3. Architecture & Repository Structure
 Follows KISS, SOLID, DRY. PSR-4 under `josemmo\Verifactu\` (`src/`) and `josemmo\Verifactu\Tests\` (`tests/`). No backward compatibility needed (brand new).

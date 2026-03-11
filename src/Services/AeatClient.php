@@ -20,7 +20,13 @@ use SensitiveParameter;
 use UXML\UXML;
 
 /**
- * Class to communicate with the AEAT web service endpoint for VERI*FACTU
+ * Main consumer-facing service for communicating with the AEAT VERI*FACTU SOAP endpoints.
+ *
+ * Typical usage flow:
+ * 1. Build and validate a `ComputerSystem` and the relevant record or query model.
+ * 2. Instantiate this client with the taxpayer identity.
+ * 3. Configure certificate and environment.
+ * 4. Call `send()` or `query()` and wait on the returned promise.
  */
 class AeatClient {
     /** SOAP envelope XML namespace */
@@ -63,7 +69,7 @@ class AeatClient {
     }
 
     /**
-     * Set certificate
+     * Set the client certificate used for AEAT communication.
      *
      * NOTE: The certificate path must have the ".p12" extension to be recognized as a PFX bundle.
      *
@@ -82,7 +88,7 @@ class AeatClient {
     }
 
     /**
-     * Set representative
+     * Set the representative that sends on behalf of the taxpayer.
      *
      * NOTE: Requires the represented fiscal entity to fill the "GENERALLEY58" form at AEAT.
      *
@@ -96,7 +102,10 @@ class AeatClient {
     }
 
     /**
-     * Set end date of voluntary remission
+     * Set the voluntary-remission end date to be included in future submissions.
+     *
+     * This value affects subsequent `send()` calls. It does not trigger a
+     * standalone request on its own.
      *
      * @param DateTimeImmutable|null $endDate              End date (time part will be ignored) or `null` to clear
      * @param bool                   $isAffectedByIncident Whether voluntary remission was at some point affected by a technical incident
@@ -110,7 +119,7 @@ class AeatClient {
     }
 
     /**
-     * Set requirement reference
+     * Set the AEAT requirement reference for requirement-based submissions.
      *
      * Mandatory in case a of a non-voluntary remission upon request by the AEAT ("remisión por requerimiento").
      * Otherwise must be unset.
@@ -127,7 +136,7 @@ class AeatClient {
     }
 
     /**
-     * Set production environment
+     * Set the target AEAT environment.
      *
      * @param bool $production Pass `true` for production, `false` for testing
      *
@@ -139,7 +148,7 @@ class AeatClient {
     }
 
     /**
-     * Set entity seal
+     * Select whether the configured certificate is an entity-seal certificate.
      *
      * @param bool $entitySeal Pass `true` for entity seal certificate, `false` for regular certificate
      *
@@ -151,7 +160,7 @@ class AeatClient {
     }
 
     /**
-     * Sleep for the required wait time after receiving a response
+     * Sleep for the wait time requested by AEAT in a previous submission response.
      *
      * The AEAT server may require the SIF to wait a certain number of seconds
      * before sending the next submission. Ignoring this may cause rejections.
@@ -168,7 +177,10 @@ class AeatClient {
     }
 
     /**
-     * Send invoicing records
+     * Send a batch of invoice records to AEAT.
+     *
+     * Records should be fully populated and validated before calling this
+     * method. The accepted batch size is 1 to 1000 records.
      *
      * @param (RegistrationRecord|CancellationRecord)[] $records Invoicing records
      *
@@ -248,7 +260,9 @@ class AeatClient {
     }
 
     /**
-     * Query submitted invoicing records (voluntary remission «VERIFACTU» only)
+     * Query previously submitted invoice records in voluntary-remission mode.
+     *
+     * The `QueryFilter` should be fully populated and validated before use.
      *
      * @param QueryFilter $filter             Query filter parameters
      * @param bool        $showIssuerName     Include NombreRazonEmisor field in response (increases response time for recipient queries)

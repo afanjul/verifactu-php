@@ -1,0 +1,121 @@
+# Verifactu-PHP
+
+Verifactu-PHP is a PHP library for integrating the Spanish VERI*FACTU flows into another billing system. It is not a complete SIF product. It provides models, validation, chained hashing, XML import/export, AEAT SOAP communication, query support, and QR URL generation.
+
+## Scope
+- Generate registration and cancellation invoice records.
+- Validate consumer-facing models through `Model::validate()`.
+- Calculate deterministic chained SHA-256 hashes.
+- Export/import XML using model methods such as `export()` and `fromXml()`.
+- Send records to AEAT with `AeatClient::send()`.
+- Query previously submitted records with `AeatClient::query()`.
+- Generate the target URL to encode in QR codes with `QrGenerator`.
+
+## Stable public entry points
+### Services
+- `josemmo\Verifactu\Services\AeatClient`
+- `josemmo\Verifactu\Services\QrGenerator`
+
+### Core models
+- `josemmo\Verifactu\Models\ComputerSystem`
+- `josemmo\Verifactu\Models\Records\RegistrationRecord`
+- `josemmo\Verifactu\Models\Records\CancellationRecord`
+- `josemmo\Verifactu\Models\Queries\QueryFilter`
+- `josemmo\Verifactu\Models\Queries\QueryPaginationKey`
+
+### Response models
+- `josemmo\Verifactu\Models\Responses\AeatResponse`
+- `josemmo\Verifactu\Models\Responses\ResponseItem`
+- `josemmo\Verifactu\Models\Responses\QueryResponse`
+- `josemmo\Verifactu\Models\Responses\QueryResponseItem`
+
+### Public exceptions
+- `josemmo\Verifactu\Exceptions\InvalidModelException`
+- `josemmo\Verifactu\Exceptions\ImportException`
+- `josemmo\Verifactu\Exceptions\AeatException`
+
+## Primary workflows
+### 1. Send a registration record
+1. Create `RegistrationRecord`.
+2. Fill invoice identifier, issuer fields, breakdown, totals, and optional flags.
+3. Set chain state with `previousInvoiceId` and `previousHash`.
+4. Set `hashedAt` and compute `hash` with `calculateHash()`.
+5. Call `validate()`.
+6. Create and validate `ComputerSystem`.
+7. Create `AeatClient` with system and taxpayer.
+8. Configure certificate and environment.
+9. Call `send([$record])->wait()`.
+10. Inspect `AeatResponse::status`, `csv`, `items`, and optionally `waitSeconds`.
+
+### 2. Send a cancellation record
+1. Create `CancellationRecord`.
+2. Fill the invoice identifier being cancelled.
+3. Fill chain state and `hashedAt`.
+4. Compute `hash` and call `validate()`.
+5. Reuse the same `ComputerSystem` and `AeatClient` flow as for registration records.
+
+### 3. Query submitted records
+1. Create `QueryFilter`.
+2. Always set `year` and `period`.
+3. Add optional invoice/date/counterpart filters.
+4. Call `validate()`.
+5. Call `query($filter)->wait()` on a configured `AeatClient`.
+6. Inspect `QueryResponse::result`, `items`, `hasMorePages`, and `paginationKey`.
+
+### 4. Generate a QR URL
+1. Create `QrGenerator`.
+2. Optionally set environment with `setProduction(false)` and mode with `setOnlineMode(false)`.
+3. Call `fromRegistrationRecord()`, `fromInvoiceId()`, or `from()`.
+4. Render the resulting URL into a QR image in the consuming project.
+
+## Important invariants
+- Public models must be validated explicitly with `validate()`.
+- Hash chaining is part of the contract. `hash` is not auto-populated.
+- `previousInvoiceId` and `previousHash` are interdependent.
+- `QueryFilter::exactIssueDate` is mutually exclusive with `issueDateFrom` and `issueDateTo`.
+- `QueryFilter::counterpart` is mutually exclusive with `foreignCounterpart`.
+- `AeatClient::send()` only accepts batches of 1..1000 records.
+- `AeatResponse::waitSeconds` should be honored before the next submission.
+- `QrGenerator` only produces the URL, not the QR bitmap.
+
+## Environment and transport notes
+- Use `AeatClient::setProduction(false)` for the AEAT preproduction environment.
+- Use `AeatClient::setCertificate()` before transport operations.
+- `AeatClient::setEntitySeal(true)` changes the base AEAT host to the entity-seal endpoint.
+- `AeatClient::setRepresentative()` and `setRequirementReference()` are optional flow modifiers.
+- `setVoluntaryRemissionEndDate()` affects future valid submissions; it is not documented here as a standalone empty-send workflow.
+
+## Error handling expectations
+- `InvalidModelException`
+  - validation failures on public models
+- `ImportException`
+  - invalid or incomplete XML when calling `fromXml()`
+- `AeatException`
+  - SOAP faults, unexpected response structure, or XML parse failures
+- `ClientExceptionInterface`
+  - low-level HTTP transport failures from Guzzle/PSR client layer
+
+## Preferred discovery order for AI agents
+1. `README.md`
+2. `docs/workflows/*.rst`
+3. `docs/*.rst`
+4. PHPDoc on the public classes listed above
+5. `llms.txt` and `llms-full.txt`
+
+## Files that are not the primary consumer contract
+- `AGENTS.md`
+  - contributor guidance for this repository
+- `FORK.md`
+  - fork maintenance and Composer repository wiring
+
+## Canonical docs links
+- `README.md`
+- `docs/index.rst`
+- `docs/generacion.rst`
+- `docs/comunicacion.rst`
+- `docs/consulta.rst`
+- `docs/codigos-qr.rst`
+- `docs/workflows/quickstart.rst`
+- `docs/workflows/submission-flow.rst`
+- `docs/workflows/query-flow.rst`
+- `docs/workflows/validation-and-errors.rst`
