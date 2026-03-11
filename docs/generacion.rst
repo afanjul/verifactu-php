@@ -106,6 +106,35 @@ Puedes comprobar que el registro que has creado es correcto usando el método :p
         echo "Not a valid record: $e\n";
     }
 
+Campos adicionales y facturas rectificativas
+--------------------------------------------
+
+La clase :php:class:`RegistrationRecord` incluye multitud de campos opcionales y banderas lógicas para adaptarse a las distintas operativas más inusuales que recoge el reglamento:
+
+* ``$isSimplifiedArt7273`` y ``$withoutRecipientIdArt61d``: Booleanos que indican si se trata de una factura simplificada cualificada o sin identificación del destinatario según los reglamentos de facturación.
+* ``$isMacrodato``: Booleano obligatorio y que debe pasarse a ``true`` cuando el importe de una factura excede o es igual a 100.000.000 €.
+* ``$hasCoupon``: Para indicar si la operación consta del canje de cupones, tarjetas de fidelidad o prepago.
+* Facturaciones por terceros: Uso de ``$issuedByThirdParty`` con un valor del enumerado :php:class:`ThirdPartyType` junto con los datos fiscales de dicho tercero a través del atributo ``$thirdParty``.
+* Acuerdos de facturación: ``$systemAgreementId`` y ``$billingAgreementNumber`` proporcionan el identificador técnico en aquellos casos donde haya un marco de facturación externo subcontratado.
+
+Adicionalmente, si el registro de alta trata sobre una **factura rectificativa**, debes incluir el tipo de corrección con las facturas dependientes:
+
+.. code-block:: php
+
+    use josemmo\Verifactu\Models\Records\CorrectiveType;
+
+    // Ejemplo para Rectificativa por Diferencias
+    $record->correctiveType = CorrectiveType::Differences;
+    $record->correctedInvoices[] = new InvoiceIdentifier('A00000000', 'FACT2025-001', new DateTimeImmutable('2025-10-15'));
+
+    // Ejemplo para Rectificativa por Sustitución
+    $record->correctiveType = CorrectiveType::Substitution;
+    $record->replacedInvoices[] = new InvoiceIdentifier('A00000000', 'FACT2025-001', new DateTimeImmutable('2025-10-15'));
+    $record->correctedBaseAmount = '100.00';
+    $record->correctedTaxAmount = '21.00';
+
+Recuerda siempre llamar la método ``validate()`` para que la librería se encargue de comprobar estas estrictas obligaciones de interdependencia de campos entre sí antes del envío a la AEAT.
+
 Registros de anulación
 ----------------------
 
