@@ -32,7 +32,7 @@ abstract class Record extends Model {
      * @field Encadenamiento/RegistroAnterior
      */
     #[Assert\Valid]
-    public ?InvoiceIdentifier $previousInvoiceId;
+    public ?InvoiceIdentifier $previousInvoiceId = null;
 
     /**
      * Primeros 64 caracteres de la huella o hash del registro de facturación anterior
@@ -40,7 +40,7 @@ abstract class Record extends Model {
      * @field Encadenamiento/RegistroAnterior/Huella
      */
     #[Assert\Regex(pattern: '/^[0-9A-F]{64}$/')]
-    public ?string $previousHash;
+    public ?string $previousHash = null;
 
     /**
      * Huella o hash de cierto contenido de este registro de facturación
