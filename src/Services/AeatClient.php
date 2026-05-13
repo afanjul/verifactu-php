@@ -289,19 +289,19 @@ class AeatClient {
 
         // Add header
         $cabeceraElement = $baseElement->add('con:Cabecera');
-        $cabeceraElement->add('con:IDVersion', self::SCHEMA_VERSION);
-        $obligadoEmisionElement = $cabeceraElement->add('con:ObligadoEmision');
+        $cabeceraElement->add('sum1:IDVersion', self::SCHEMA_VERSION);
+        $obligadoEmisionElement = $cabeceraElement->add('sum1:ObligadoEmision');
         $obligadoEmisionElement->add('sum1:NombreRazon', $this->taxpayer->name);
         $obligadoEmisionElement->add('sum1:NIF', $this->taxpayer->nif);
         if ($this->representative !== null) {
-            $cabeceraElement->add('con:IndicadorRepresentante', 'S');
+            $cabeceraElement->add('sum1:IndicadorRepresentante', 'S');
         }
 
         // Add filter
         $filtroElement = $baseElement->add('con:FiltroConsulta');
         $periodoElement = $filtroElement->add('con:PeriodoImputacion');
-        $periodoElement->add('con:Ejercicio', (string) $filter->year);
-        $periodoElement->add('con:Periodo', $filter->period);
+        $periodoElement->add('sum1:Ejercicio', (string) $filter->year);
+        $periodoElement->add('sum1:Periodo', $filter->period);
 
         if ($filter->invoiceNumber !== null) {
             $filtroElement->add('con:NumSerieFactura', $filter->invoiceNumber);
@@ -323,14 +323,15 @@ class AeatClient {
 
         if ($filter->exactIssueDate !== null) {
             $fechaExpedicionElement = $filtroElement->add('con:FechaExpedicionFactura');
-            $fechaExpedicionElement->add('con:FechaExpedicionFactura', $filter->exactIssueDate->format('d-m-Y'));
+            $fechaExpedicionElement->add('sum1:FechaExpedicionFactura', $filter->exactIssueDate->format('d-m-Y'));
         } elseif ($filter->issueDateFrom !== null || $filter->issueDateTo !== null) {
-            $rangoElement = $filtroElement->add('con:RangoFechaExpedicion');
+            $fechaExpedicionElement = $filtroElement->add('con:FechaExpedicionFactura');
+            $rangoElement = $fechaExpedicionElement->add('sum1:RangoFechaExpedicion');
             if ($filter->issueDateFrom !== null) {
-                $rangoElement->add('con:Desde', $filter->issueDateFrom->format('d-m-Y'));
+                $rangoElement->add('sum1:Desde', $filter->issueDateFrom->format('d-m-Y'));
             }
             if ($filter->issueDateTo !== null) {
-                $rangoElement->add('con:Hasta', $filter->issueDateTo->format('d-m-Y'));
+                $rangoElement->add('sum1:Hasta', $filter->issueDateTo->format('d-m-Y'));
             }
         }
 
