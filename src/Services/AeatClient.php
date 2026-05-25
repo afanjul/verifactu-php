@@ -12,11 +12,14 @@ use josemmo\Verifactu\Models\Records\CancellationRecord;
 use josemmo\Verifactu\Models\Records\FiscalIdentifier;
 use josemmo\Verifactu\Models\Records\Record;
 use josemmo\Verifactu\Models\Records\RegistrationRecord;
+use josemmo\Verifactu\Models\Responses\AeatRequest;
 use josemmo\Verifactu\Models\Responses\AeatResponse;
+use josemmo\Verifactu\Models\Responses\AeatSubmissionResult;
 use josemmo\Verifactu\Models\Responses\QueryResponse;
 use Psr\Http\Client\ClientExceptionInterface;
 use Psr\Http\Message\ResponseInterface;
 use SensitiveParameter;
+use Throwable;
 use UXML\UXML;
 
 /**
@@ -184,10 +187,9 @@ class AeatClient {
      *
      * @param (RegistrationRecord|CancellationRecord)[] $records Invoicing records
      *
-     * @return PromiseInterface<AeatResponse> Response from service
+     * @return PromiseInterface<AeatSubmissionResult> Response from service
      *
-     * @throws AeatException            if AEAT server returned an error
-     * @throws ClientExceptionInterface if request sending failed
+     * @throws AeatException if AEAT server returned an error or request sending failed
      */
     public function send(array $records): PromiseInterface { /** @phpstan-ignore generics.notGeneric */
         if (count($records) < 1 || count($records) > 1000) {
@@ -230,6 +232,7 @@ class AeatClient {
         }
 
         // Send request
+        $requestXml = $xml->asXML();
         $options = [
             'base_uri' => $this->getBaseUri(),
             'http_errors' => false,
@@ -237,26 +240,43 @@ class AeatClient {
                 'Content-Type' => 'text/xml',
                 'User-Agent' => "Mozilla/5.0 (compatible; {$this->system->name}/{$this->system->version})",
             ],
-            'body' => $xml->asXML(),
+            'body' => $requestXml,
         ];
         if ($this->certificatePath !== null) {
             $options['cert'] = ($this->certificatePassword === null) ?
                 $this->certificatePath :
                 [$this->certificatePath, $this->certificatePassword];
         }
-        $responsePromise = $this->client->postAsync('/wlpl/TIKE-CONT/ws/SistemaFacturacion/VerifactuSOAP', $options);
+        try {
+            $responsePromise = $this->client->postAsync('/wlpl/TIKE-CONT/ws/SistemaFacturacion/VerifactuSOAP', $options);
+        } catch (Throwable $e) {
+            throw new AeatException($e->getMessage(), (int) $e->getCode(), $e, requestXml: $requestXml);
+        }
 
         // Parse and return response
         return $responsePromise
             ->then(fn (ResponseInterface $response): string => $response->getBody()->getContents())
-            ->then(function (string $response): UXML {
+            ->then(function (string $responseXml) use ($requestXml): AeatSubmissionResult {
                 try {
-                    return UXML::fromString($response);
-                } catch (InvalidArgumentException $e) {
-                    throw new AeatException('Failed to parse XML response', previous: $e);
+                    return new AeatSubmissionResult(
+                        new AeatRequest($requestXml),
+                        AeatResponse::fromXml($responseXml),
+                    );
+                } catch (AeatException $e) {
+                    throw new AeatException(
+                        $e->getMessage(),
+                        $e->getCode(),
+                        $e,
+                        requestXml: $requestXml,
+                        responseXml: $responseXml,
+                    );
                 }
-            })
-            ->then(fn (UXML $xml): AeatResponse => AeatResponse::from($xml));
+            }, fn (Throwable $e) => throw new AeatException(
+                $e->getMessage(),
+                (int) $e->getCode(),
+                $e,
+                requestXml: $requestXml,
+            ));
     }
 
     /**

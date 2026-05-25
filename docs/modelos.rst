@@ -12,7 +12,9 @@ Algunos de los ejemplos más reprensentativos de modelos de esta librería son:
 * :php:class:`josemmo\Verifactu\Models\Records\CorrectiveType`: Enum utilizado en facturas rectificativas para definir la naturaleza de la rectificación (Sustitución o Diferencias).
 * :php:class:`josemmo\Verifactu\Models\Records\ThirdPartyType`: Enum para identificar a un tercero o al destinatario como emisor de la factura.
 * :php:class:`josemmo\Verifactu\Models\ComputerSystem`: Datos del sistema informático emisor (SIF). Este objeto se usa para informar a AEAT sobre el software que genera los registros.
-* :php:class:`josemmo\Verifactu\Models\Responses\AeatResponse`: Datos parseados de una respuesta recibida de una comunicación con el servidor de la AEAT.
+* :php:class:`josemmo\Verifactu\Models\Responses\AeatSubmissionResult`: Resultado de un envío a AEAT, con la petición SOAP enviada y la respuesta parseada.
+* :php:class:`josemmo\Verifactu\Models\Responses\AeatRequest`: XML SOAP exacto enviado a AEAT.
+* :php:class:`josemmo\Verifactu\Models\Responses\AeatResponse`: Datos parseados de una respuesta recibida de AEAT y XML SOAP exacto recibido.
 * :php:class:`josemmo\Verifactu\Models\Events\EventRecord`: Registro de evento del SIF (inicio/parada, anomalías, exportaciones, resumen periódico). Véase :doc:`eventos`.
 * :php:class:`josemmo\Verifactu\Models\Events\EventType`: Enum con los tipos de evento de la tabla L2E (valores ``01``--``10`` y ``90``).
 

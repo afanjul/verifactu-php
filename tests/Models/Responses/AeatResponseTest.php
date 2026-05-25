@@ -8,11 +8,10 @@ use josemmo\Verifactu\Models\Responses\ItemStatus;
 use josemmo\Verifactu\Models\Responses\RecordType;
 use josemmo\Verifactu\Models\Responses\ResponseStatus;
 use PHPUnit\Framework\TestCase;
-use UXML\UXML;
 
 final class AeatResponseTest extends TestCase {
     public function testParsesCorrectResponse(): void {
-        $xml = UXML::fromString(<<<XML
+        $xml = <<<XML
         <?xml version="1.0" encoding="UTF-8"?>
         <env:Envelope xmlns:env="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tikR="https://www2.agenciatributaria.gob.es/static_files/common/internet/dep/aplicaciones/es/aeat/tike/cont/ws/RespuestaSuministro.xsd" xmlns:tik="https://www2.agenciatributaria.gob.es/static_files/common/internet/dep/aplicaciones/es/aeat/tike/cont/ws/SuministroInformacion.xsd">
             <env:Header/>
@@ -70,9 +69,10 @@ final class AeatResponseTest extends TestCase {
                 </tikR:RespuestaRegFactuSistemaFacturacion>
             </env:Body>
         </env:Envelope>
-        XML);
-        $response = AeatResponse::from($xml);
+        XML;
+        $response = AeatResponse::fromXml($xml);
 
+        $this->assertSame($xml, $response->xml);
         $this->assertEquals('A-86U4KHPACUMVZE', $response->csv);
         $this->assertNotNull($response->submittedAt);
         $this->assertEquals('2025-10-13T12:34:56+02:00', $response->submittedAt->format('Y-m-d\TH:i:sP'));
@@ -101,7 +101,7 @@ final class AeatResponseTest extends TestCase {
     }
 
     public function testParsesIncorrectResponse(): void {
-        $xml = UXML::fromString(<<<XML
+        $xml = <<<XML
         <?xml version="1.0" encoding="UTF-8"?>
         <env:Envelope xmlns:env="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tikR="https://www2.agenciatributaria.gob.es/static_files/common/internet/dep/aplicaciones/es/aeat/tike/cont/ws/RespuestaSuministro.xsd" xmlns:tik="https://www2.agenciatributaria.gob.es/static_files/common/internet/dep/aplicaciones/es/aeat/tike/cont/ws/SuministroInformacion.xsd">
             <env:Header/>
@@ -131,9 +131,10 @@ final class AeatResponseTest extends TestCase {
                 </tikR:RespuestaRegFactuSistemaFacturacion>
             </env:Body>
         </env:Envelope>
-        XML);
-        $response = AeatResponse::from($xml);
+        XML;
+        $response = AeatResponse::fromXml($xml);
 
+        $this->assertSame($xml, $response->xml);
         $this->assertEquals(null, $response->csv);
         $this->assertEquals(null, $response->submittedAt);
         $this->assertEquals(60, $response->waitSeconds);
@@ -149,7 +150,7 @@ final class AeatResponseTest extends TestCase {
     }
 
     public function testHandlesServerErrors(): void {
-        $xml = UXML::fromString(<<<XML
+        $xml = <<<XML
         <?xml version="1.0" encoding="UTF-8"?>
         <env:Envelope xmlns:env="http://schemas.xmlsoap.org/soap/envelope/">
             <env:Body>
@@ -159,13 +160,20 @@ final class AeatResponseTest extends TestCase {
                 </env:Fault>
             </env:Body>
         </env:Envelope>
-        XML);
+        XML;
         try {
-            AeatResponse::from($xml);
+            AeatResponse::fromXml($xml);
             $this->fail('Did not throw exception for server error response');
         } catch (AeatException $e) {
             $this->assertStringContainsString('Codigo[20009].Error interno en el servidor', $e->getMessage());
         }
+    }
+
+    public function testThrowsForInvalidXml(): void {
+        $this->expectException(AeatException::class);
+        $this->expectExceptionMessage('Failed to parse XML response');
+
+        AeatResponse::fromXml('<element>Malformed XML</notClosingElement>');
     }
 
     public function testParsesDuplicateRecordStatus(): void {
@@ -177,7 +185,7 @@ final class AeatResponseTest extends TestCase {
             'AceptadoConErrores' => DuplicateRecordStatus::AcceptedWithErrors,
             'Anulada'            => DuplicateRecordStatus::Cancelled,
         ] as $xmlValue => $expectedStatus) {
-            $xml = UXML::fromString(<<<XML
+            $xml = <<<XML
             <?xml version="1.0" encoding="UTF-8"?>
             <env:Envelope xmlns:env="http://schemas.xmlsoap.org/soap/envelope/"
                           xmlns:tikR="$nsTikr"
@@ -197,14 +205,22 @@ final class AeatResponseTest extends TestCase {
                                 <tik:TipoOperacion>Alta</tik:TipoOperacion>
                             </tikR:Operacion>
                             <tikR:EstadoRegistro>Correcto</tikR:EstadoRegistro>
-                            <tikR:EstadoRegistroDuplicado>$xmlValue</tikR:EstadoRegistroDuplicado>
+                            <tikR:RegistroDuplicado>
+                                <tikR:IdPeticionRegistroDuplicado>REQ-123</tikR:IdPeticionRegistroDuplicado>
+                                <tikR:EstadoRegistroDuplicado>$xmlValue</tikR:EstadoRegistroDuplicado>
+                                <tikR:CodigoErrorRegistro>3000</tikR:CodigoErrorRegistro>
+                                <tikR:DescripcionErrorRegistro>Registro duplicado.</tikR:DescripcionErrorRegistro>
+                            </tikR:RegistroDuplicado>
                         </tikR:RespuestaLinea>
                     </tikR:RespuestaRegFactuSistemaFacturacion>
                 </env:Body>
             </env:Envelope>
-            XML);
-            $response = AeatResponse::from($xml);
+            XML;
+            $response = AeatResponse::fromXml($xml);
+            $this->assertSame('REQ-123', $response->items[0]->duplicateRequestId, "Failed request id for '$xmlValue'");
             $this->assertSame($expectedStatus, $response->items[0]->duplicateStatus, "Failed for '$xmlValue'");
+            $this->assertSame('3000', $response->items[0]->duplicateErrorCode, "Failed error code for '$xmlValue'");
+            $this->assertSame('Registro duplicado.', $response->items[0]->duplicateErrorDescription, "Failed error description for '$xmlValue'");
         }
     }
 }

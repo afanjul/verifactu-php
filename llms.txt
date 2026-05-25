@@ -25,6 +25,8 @@ Verifactu-PHP is a PHP library for integrating the Spanish VERI*FACTU flows into
 
 ### Response models
 - `josemmo\Verifactu\Models\Responses\AeatResponse`
+- `josemmo\Verifactu\Models\Responses\AeatRequest`
+- `josemmo\Verifactu\Models\Responses\AeatSubmissionResult`
 - `josemmo\Verifactu\Models\Responses\ResponseItem`
 - `josemmo\Verifactu\Models\Responses\QueryResponse`
 - `josemmo\Verifactu\Models\Responses\QueryResponseItem`
@@ -44,8 +46,9 @@ Verifactu-PHP is a PHP library for integrating the Spanish VERI*FACTU flows into
 6. Create and validate `ComputerSystem`.
 7. Create `AeatClient` with system and taxpayer.
 8. Configure certificate and environment.
-9. Call `send([$record])->wait()`.
-10. Inspect `AeatResponse::status`, `csv`, `items`, and optionally `waitSeconds`.
+9. Call `send([$record])->wait()` and receive `AeatSubmissionResult`.
+10. Persist `AeatSubmissionResult::request->xml` and `AeatSubmissionResult::response->xml` if audit evidence is needed.
+11. Inspect `AeatSubmissionResult::response->status`, `csv`, `items`, and optionally `waitSeconds`.
 
 ### 2. Send a cancellation record
 1. Create `CancellationRecord`.
@@ -91,9 +94,8 @@ Verifactu-PHP is a PHP library for integrating the Spanish VERI*FACTU flows into
 - `ImportException`
   - invalid or incomplete XML when calling `fromXml()`
 - `AeatException`
-  - SOAP faults, unexpected response structure, or XML parse failures
-- `ClientExceptionInterface`
-  - low-level HTTP transport failures from Guzzle/PSR client layer
+  - SOAP faults, unexpected response structure, XML parse failures, or send transport failures
+  - `requestXml` is set after submission XML is built; `responseXml` is set after a response body is received
 
 ## Preferred discovery order for AI agents
 1. `README.md`

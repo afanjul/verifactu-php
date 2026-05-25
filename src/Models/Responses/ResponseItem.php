@@ -60,9 +60,30 @@ class ResponseItem extends Model {
     public ?string $errorDescription = null;
 
     /**
+     * ID de petición del registro duplicado
+     *
+     * @field RegistroDuplicado/IdPeticionRegistroDuplicado
+     */
+    public ?string $duplicateRequestId = null;
+
+    /**
      * Estado del registro duplicado
      *
-     * @field EstadoRegistroDuplicado
+     * @field RegistroDuplicado/EstadoRegistroDuplicado
      */
     public ?DuplicateRecordStatus $duplicateStatus = null;
+
+    /**
+     * Código de error del registro duplicado
+     *
+     * @field RegistroDuplicado/CodigoErrorRegistro
+     */
+    public ?string $duplicateErrorCode = null;
+
+    /**
+     * Descripción del error del registro duplicado
+     *
+     * @field RegistroDuplicado/DescripcionErrorRegistro
+     */
+    public ?string $duplicateErrorDescription = null;
 }

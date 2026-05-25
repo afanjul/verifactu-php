@@ -87,7 +87,12 @@ $taxpayer = new FiscalIdentifier('Perico de los Palotes, S.A.', 'A00000000');
 $client = new AeatClient($system, $taxpayer);
 $client->setCertificate(__DIR__ . '/certificado.pfx', 'contraseña');
 $client->setProduction(false);
-$aeatResponse = $client->send([$record])->wait();
+$result = $client->send([$record])->wait();
+$aeatResponse = $result->response;
+
+// XML exacto enviado y recibido, útil para auditoría y recuperación.
+$requestXml = $result->request->xml;
+$responseXml = $result->response->xml;
 
 if ($aeatResponse->status === ResponseStatus::Correct) {
     $csv = $aeatResponse->csv;
@@ -111,6 +116,8 @@ Los puntos de entrada pensados para proyectos consumidores son:
   - `josemmo\Verifactu\Models\Records\CancellationRecord`
   - `josemmo\Verifactu\Models\Queries\QueryFilter`
 - **Respuestas**
+  - `josemmo\Verifactu\Models\Responses\AeatRequest`
+  - `josemmo\Verifactu\Models\Responses\AeatSubmissionResult`
   - `josemmo\Verifactu\Models\Responses\AeatResponse`
   - `josemmo\Verifactu\Models\Responses\QueryResponse`
 - **Excepciones**

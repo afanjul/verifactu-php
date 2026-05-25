@@ -3,6 +3,7 @@ namespace josemmo\Verifactu\Models\Responses;
 
 use DateTimeImmutable;
 use DateTimeInterface;
+use InvalidArgumentException;
 use josemmo\Verifactu\Exceptions\AeatException;
 use josemmo\Verifactu\Models\Model;
 use josemmo\Verifactu\Models\Records\InvoiceIdentifier;
@@ -21,7 +22,26 @@ class AeatResponse extends Model {
     public const NS = 'https://www2.agenciatributaria.gob.es/static_files/common/internet/dep/aplicaciones/es/aeat/tike/cont/ws/RespuestaSuministro.xsd';
 
     /**
-     * Create new instance from XML response
+     * Create new instance from XML response text
+     *
+     * @param string $xml Raw XML response
+     *
+     * @return AeatResponse Parsed response
+     *
+     * @throws AeatException if server returned an error or failed to parse response
+     */
+    public static function fromXml(string $xml): self {
+        try {
+            $document = UXML::fromString($xml);
+        } catch (InvalidArgumentException $e) {
+            throw new AeatException('Failed to parse XML response', previous: $e, responseXml: $xml);
+        }
+
+        return self::fromDocument($document, $xml);
+    }
+
+    /**
+     * Create new instance from parsed XML response
      *
      * @param UXML $xml Raw XML response
      *
@@ -29,11 +49,12 @@ class AeatResponse extends Model {
      *
      * @throws AeatException if server returned an error or failed to parse response
      */
-    public static function from(UXML $xml): self {
+    private static function fromDocument(UXML $xml, string $rawXml): self {
         $nsEnv = AeatClient::NS_SOAPENV;
         $nsTikr = self::NS;
         $nsTik = Record::NS;
         $instance = new self();
+        $instance->xml = $rawXml;
 
         // Handle server errors
         $faultElement = $xml->get("{{$nsEnv}}Body/{{$nsEnv}}Fault/faultstring");
@@ -132,10 +153,28 @@ class AeatResponse extends Model {
                 $item->errorDescription = $errorDescriptionElement->asText();
             }
 
-            // Parse duplicate status
-            $duplicateStatusElement = $itemElement->get("{{$nsTikr}}EstadoRegistroDuplicado");
-            if ($duplicateStatusElement !== null) {
-                $item->duplicateStatus = DuplicateRecordStatus::tryFrom($duplicateStatusElement->asText());
+            // Parse duplicate record details
+            $duplicateElement = $itemElement->get("{{$nsTikr}}RegistroDuplicado");
+            if ($duplicateElement !== null) {
+                $duplicateRequestIdElement = $duplicateElement->get("{{$nsTikr}}IdPeticionRegistroDuplicado");
+                if ($duplicateRequestIdElement !== null) {
+                    $item->duplicateRequestId = $duplicateRequestIdElement->asText();
+                }
+
+                $duplicateStatusElement = $duplicateElement->get("{{$nsTikr}}EstadoRegistroDuplicado");
+                if ($duplicateStatusElement !== null) {
+                    $item->duplicateStatus = DuplicateRecordStatus::tryFrom($duplicateStatusElement->asText());
+                }
+
+                $duplicateErrorCodeElement = $duplicateElement->get("{{$nsTikr}}CodigoErrorRegistro");
+                if ($duplicateErrorCodeElement !== null) {
+                    $item->duplicateErrorCode = $duplicateErrorCodeElement->asText();
+                }
+
+                $duplicateErrorDescriptionElement = $duplicateElement->get("{{$nsTikr}}DescripcionErrorRegistro");
+                if ($duplicateErrorDescriptionElement !== null) {
+                    $item->duplicateErrorDescription = $duplicateErrorDescriptionElement->asText();
+                }
             }
 
             $instance->items[] = $item;
@@ -145,6 +184,12 @@ class AeatResponse extends Model {
         $instance->validate();
         return $instance;
     }
+
+    /**
+     * XML de respuesta recibido de AEAT
+     */
+    #[Assert\NotBlank]
+    public string $xml;
 
     /**
      * CSV asociado al envío generado por AEAT

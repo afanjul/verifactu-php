@@ -13,8 +13,9 @@ Pasos
 5. Crea y valida un :php:class:`josemmo\Verifactu\Models\ComputerSystem`.
 6. Instancia :php:class:`josemmo\Verifactu\Services\AeatClient` con el contribuyente.
 7. Configura certificado y entorno.
-8. Envía el lote con `send([$record])->wait()`.
-9. Revisa `status`, `csv` e `items` en la respuesta.
+8. Envía el lote con `send([$record])->wait()` y recibe un `AeatSubmissionResult`.
+9. Conserva `request->xml` y `response->xml` si necesitas evidencias de auditoría.
+10. Revisa `status`, `csv` e `items` en `response`.
 
 Invariantes del flujo
 ---------------------
@@ -23,6 +24,7 @@ Invariantes del flujo
 - `hashedAt` debe estar asignado antes de calcular `hash`.
 - `previousInvoiceId` y `previousHash` deben estar ambos a `null` o ambos informados.
 - `send()` solo acepta lotes entre 1 y 1000 registros.
+- `send()` devuelve el XML SOAP exacto enviado y recibido junto a la respuesta parseada.
 - Si AEAT devuelve `waitSeconds`, debe respetarse antes del siguiente envío.
 
 Siguientes lecturas

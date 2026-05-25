@@ -26,9 +26,10 @@ Envío y manejo de respuesta
 ---------------------------
 
 - Envía entre 1 y 1000 registros por llamada.
-- Espera la promesa con `wait()`.
-- Evalúa `AeatResponse::status` para conocer el resultado global.
-- Recorre `AeatResponse::items` para ver el resultado individual de cada registro.
+- Espera la promesa con `wait()` y recibe un `AeatSubmissionResult`.
+- Persiste `request->xml` y `response->xml` si tu integración necesita trazabilidad del intercambio SOAP exacto.
+- Evalúa `AeatSubmissionResult::response->status` para conocer el resultado global.
+- Recorre `AeatSubmissionResult::response->items` para ver el resultado individual de cada registro.
 - Si `waitSeconds` está informado, usa `AeatClient::waitIfNeeded()` antes del siguiente lote.
 
 Errores esperables
@@ -37,9 +38,7 @@ Errores esperables
 - :php:class:`josemmo\Verifactu\Exceptions\InvalidModelException`
   - cuando el modelo no cumple las restricciones declaradas
 - :php:class:`josemmo\Verifactu\Exceptions\AeatException`
-  - cuando AEAT devuelve un SOAP Fault o la respuesta no puede parsearse
-- `ClientExceptionInterface`
-  - cuando la capa HTTP falla durante la petición
+  - cuando AEAT devuelve un SOAP Fault, la respuesta no puede parsearse o la capa HTTP falla durante la petición
 
 Siguientes lecturas
 -------------------

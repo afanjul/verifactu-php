@@ -41,12 +41,16 @@ Envía los registros a la AEAT (hasta un máximo de 1000 por llamada):
 
 .. code-block:: php
 
-    $aeatResponse = $client->send([$record])->wait();
+    $result = $client->send([$record])->wait();
+    $aeatResponse = $result->response;
+    $requestXml = $result->request->xml;
+    $responseXml = $result->response->xml;
 
 .. note::
 
     El método :php:method:`josemmo\Verifactu\Services\AeatClient::send()` requiere entre 1 y 1000 registros por llamada.
     Esta librería no expone un envío vacío solo para remitir cabecera.
+    Desde esta versión, ``send()`` devuelve un ``AeatSubmissionResult``: ``request->xml`` contiene el SOAP exacto enviado y ``response->xml`` conserva el SOAP exacto recibido.
 
 Procesa la respuesta.
 En caso de un envío correcto de registros de facturación, la respuesta contendrá un Código Seguro de Verificación (CSV):
