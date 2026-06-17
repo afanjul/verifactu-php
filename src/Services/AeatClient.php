@@ -40,6 +40,10 @@ class AeatClient {
     public const NS_AEAT_CONSULTA = 'https://www2.agenciatributaria.gob.es/static_files/common/internet/dep/aplicaciones/es/aeat/tike/cont/ws/ConsultaLR.xsd';
     /** Current schema version used for IDVersion fields */
     public const SCHEMA_VERSION = '1.0';
+    /** Default connect timeout (seconds) for the internally created HTTP client */
+    public const DEFAULT_CONNECT_TIMEOUT = 10;
+    /** Default total timeout (seconds) for the internally created HTTP client */
+    public const DEFAULT_TIMEOUT = 60;
 
     private readonly ComputerSystem $system;
     private readonly FiscalIdentifier $taxpayer;
@@ -55,20 +59,38 @@ class AeatClient {
     private bool $isEntitySeal = false;
 
     /**
-     * Class constructor
+     * Class constructor.
      *
-     * @param ComputerSystem   $system     Computer system details
-     * @param FiscalIdentifier $taxpayer   Taxpayer details (party that issues the invoices)
-     * @param Client|null      $httpClient Custom HTTP client, leave empty to create a new one
+     * When `$httpClient` is omitted, a new Guzzle client is built with the
+     * given `$connectTimeout` and `$timeout` so that the library never blocks
+     * indefinitely on AEAT traffic. When `$httpClient` is provided, those
+     * timeout arguments are ignored and the injected client's own options
+     * prevail (this keeps backwards compatibility for callers that already
+     * build their own Guzzle client).
+     *
+     * @param ComputerSystem   $system         Computer system details
+     * @param FiscalIdentifier $taxpayer       Taxpayer details (party that issues the invoices)
+     * @param Client|null      $httpClient     Custom HTTP client, leave empty to create a new one
+     * @param int              $connectTimeout Seconds to wait while establishing the TCP connection,
+     *                                         only used when `$httpClient` is not provided.
+     *                                         Use `0` to disable. Defaults to a 10s ceiling.
+     * @param int              $timeout        Seconds to wait for a full response, only used when
+     *                                         `$httpClient` is not provided. Use `0` to disable.
+     *                                         Defaults to a 60s ceiling.
      */
     public function __construct(
         ComputerSystem $system,
         FiscalIdentifier $taxpayer,
         ?Client $httpClient = null,
+        int $connectTimeout = self::DEFAULT_CONNECT_TIMEOUT,
+        int $timeout = self::DEFAULT_TIMEOUT,
     ) {
         $this->system = $system;
         $this->taxpayer = $taxpayer;
-        $this->client = $httpClient ?? new Client();
+        $this->client = $httpClient ?? new Client([
+            'connect_timeout' => $connectTimeout,
+            'timeout'         => $timeout,
+        ]);
     }
 
     /**

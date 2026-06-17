@@ -139,6 +139,8 @@ Los puntos de entrada pensados para proyectos consumidores son:
   - Configura el certificado antes de enviar o consultar con AEAT.
 - **Tiempo de espera**
   - Si la respuesta incluye `waitSeconds`, respétalo antes del siguiente envío con `AeatClient::waitIfNeeded()`.
+- **Timeouts HTTP**
+  - Cuando no se inyecta un `GuzzleHttp\Client` propio, `AeatClient` usa por defecto `connect_timeout=10s` y `timeout=60s` para evitar esperas indefinidas en tráfico AEAT. Ambos son ajustables como 4º y 5º argumento del constructor; pasa `0` para desactivarlos. Si inyectas tu propio cliente Guzzle, sus opciones prevalecen.
 
 ## Guías de uso
 

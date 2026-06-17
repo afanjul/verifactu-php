@@ -19,9 +19,45 @@ use josemmo\Verifactu\Models\Responses\ResponseStatus;
 use josemmo\Verifactu\Services\AeatClient;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Client\ClientExceptionInterface;
+use ReflectionObject;
 
 final class AeatClientTest extends TestCase {
     private MockHandler $mockHandler;
+
+    /**
+     * Build a valid `ComputerSystem` for tests.
+     */
+    private function buildValidSystem(): ComputerSystem {
+        $system = new ComputerSystem();
+        $system->vendorName = 'Perico de los Palotes, S.A.';
+        $system->vendorNif = 'A00000000';
+        $system->name = 'Test SIF';
+        $system->id = 'XX';
+        $system->version = '0.0.1';
+        $system->installationNumber = 'ABC0123';
+        $system->onlySupportsVerifactu = true;
+        $system->supportsMultipleTaxpayers = true;
+        $system->hasMultipleTaxpayers = false;
+        $system->validate();
+        return $system;
+    }
+
+    /**
+     * Build a valid taxpayer for tests.
+     */
+    private function buildValidTaxpayer(): FiscalIdentifier {
+        return new FiscalIdentifier('Perico de los Palotes, S.A.', 'A00000000');
+    }
+
+    /**
+     * Read the internally created Guzzle client of an `AeatClient` via reflection.
+     */
+    private function getInternalHttpClient(AeatClient $client): Client {
+        $property = (new ReflectionObject($client))->getProperty('client');
+        /** @var Client $inner */
+        $inner = $property->getValue($client);
+        return $inner;
+    }
 
     /**
      * Get mocked AEAT client
@@ -37,22 +73,8 @@ final class AeatClientTest extends TestCase {
         $handlerStack = HandlerStack::create($mock);
         $httpClient = new Client(['handler' => $handlerStack]);
 
-        // Build computer system
-        $system = new ComputerSystem();
-        $system->vendorName = 'Perico de los Palotes, S.A.';
-        $system->vendorNif = 'A00000000';
-        $system->name = 'Test SIF';
-        $system->id = 'XX';
-        $system->version = '0.0.1';
-        $system->installationNumber = 'ABC0123';
-        $system->onlySupportsVerifactu = true;
-        $system->supportsMultipleTaxpayers = true;
-        $system->hasMultipleTaxpayers = false;
-        $system->validate();
-
         // Build AEAT client
-        $taxpayer = new FiscalIdentifier('Perico de los Palotes, S.A.', 'A00000000');
-        $client = new AeatClient($system, $taxpayer, $httpClient);
+        $client = new AeatClient($this->buildValidSystem(), $this->buildValidTaxpayer(), $httpClient);
 
         return $client;
     }
@@ -199,5 +221,64 @@ final class AeatClientTest extends TestCase {
             $this->assertNull($e->responseXml);
             $this->assertInstanceOf(ConnectException::class, $e->getPrevious());
         }
+    }
+
+    public function testInternalClientUsesDefaultTimeouts(): void {
+        $client = new AeatClient($this->buildValidSystem(), $this->buildValidTaxpayer());
+        $inner = $this->getInternalHttpClient($client);
+
+        $this->assertSame(AeatClient::DEFAULT_CONNECT_TIMEOUT, $inner->getConfig('connect_timeout'));
+        $this->assertSame(AeatClient::DEFAULT_TIMEOUT, $inner->getConfig('timeout'));
+    }
+
+    public function testConstructorAppliesCustomTimeoutsToInternalClient(): void {
+        $client = new AeatClient(
+            $this->buildValidSystem(),
+            $this->buildValidTaxpayer(),
+            null,
+            5,
+            30,
+        );
+        $inner = $this->getInternalHttpClient($client);
+
+        $this->assertSame(5, $inner->getConfig('connect_timeout'));
+        $this->assertSame(30, $inner->getConfig('timeout'));
+    }
+
+    public function testZeroTimeoutsAreForwardedToInternalClient(): void {
+        $client = new AeatClient(
+            $this->buildValidSystem(),
+            $this->buildValidTaxpayer(),
+            null,
+            0,
+            0,
+        );
+        $inner = $this->getInternalHttpClient($client);
+
+        // `0` is Guzzle's "no timeout" sentinel; the library forwards it verbatim
+        // so callers that genuinely want an unbounded wait can still opt in.
+        $this->assertSame(0, $inner->getConfig('connect_timeout'));
+        $this->assertSame(0, $inner->getConfig('timeout'));
+    }
+
+    public function testInjectedHttpClientIsPreservedAndTimeoutArgsIgnored(): void {
+        $injected = new Client([
+            'connect_timeout' => 7,
+            'timeout'         => 90,
+        ]);
+
+        $client = new AeatClient(
+            $this->buildValidSystem(),
+            $this->buildValidTaxpayer(),
+            $injected,
+            5,
+            30,
+        );
+
+        // The injected client must be used as-is: its options prevail and the
+        // timeout constructor arguments must not override them.
+        $this->assertSame($injected, $this->getInternalHttpClient($client));
+        $this->assertSame(7, $injected->getConfig('connect_timeout'));
+        $this->assertSame(90, $injected->getConfig('timeout'));
     }
 }

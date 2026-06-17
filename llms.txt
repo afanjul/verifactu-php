@@ -87,6 +87,7 @@ Verifactu-PHP is a PHP library for integrating the Spanish VERI*FACTU flows into
 - `AeatClient::setEntitySeal(true)` changes the base AEAT host to the entity-seal endpoint.
 - `AeatClient::setRepresentative()` and `setRequirementReference()` are optional flow modifiers.
 - `setVoluntaryRemissionEndDate()` affects future valid submissions; it is not documented here as a standalone empty-send workflow.
+- When no custom HTTP client is injected, `AeatClient` builds its Guzzle client with a 10s `connect_timeout` and a 60s `timeout` (`AeatClient::DEFAULT_CONNECT_TIMEOUT` / `AeatClient::DEFAULT_TIMEOUT`). Pass `$connectTimeout` and `$timeout` as the 4th and 5th constructor arguments to override them, or `0` to disable. When a `GuzzleHttp\Client` is injected, those arguments are ignored and the injected client's own options prevail.
 
 ## Error handling expectations
 - `InvalidModelException`

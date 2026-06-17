@@ -36,6 +36,26 @@ Debes indicar la ruta hacia el fichero PFX que contiene tu certificado de la Fá
     $client->setCertificate(__DIR__ . '/ruta/certificado.pfx', 'contraseña');
     $client->setProduction(false); // Para cambiar al entorno de preproducción de la AEAT
 
+Tiempos de espera HTTP
+~~~~~~~~~~~~~~~~~~~~~~
+
+Por defecto, el cliente HTTP interno creado por la librería deja de esperar indefinidamente y utiliza valores sensatos para tráfico AEAT:
+
+- ``connect_timeout``: 10 segundos (establecimiento de la conexión TCP).
+- ``timeout``: 60 segundos (respuesta completa del endpoint).
+
+Estos límites evitan que un worker en background se quede bloqueado para siempre si la AEAT acepta la conexión pero no responde, y permiten reintentos con backoff aguas arriba. Puedes ajustarlos desde el constructor:
+
+.. code-block:: php
+
+    // 5s de conexión, 30s de respuesta
+    $client = new AeatClient($system, $taxpayer, null, 5, 30);
+
+    // Desactivar por completo los timeouts (espera ilimitada, no recomendado)
+    $client = new AeatClient($system, $taxpayer, null, 0, 0);
+
+Si inyectas tu propio ``GuzzleHttp\Client`` como tercer argumento, sus opciones prevalecen: los parámetros ``$connectTimeout`` y ``$timeout`` se ignoran y el cliente mantendrá la configuración que tú le hayas dado.
+
 
 Envía los registros a la AEAT (hasta un máximo de 1000 por llamada):
 
