@@ -166,6 +166,28 @@ final class AeatResponseTest extends TestCase {
             $this->fail('Did not throw exception for server error response');
         } catch (AeatException $e) {
             $this->assertStringContainsString('Codigo[20009].Error interno en el servidor', $e->getMessage());
+            $this->assertSame(20009, $e->aeatErrorCode);
+            $this->assertSame($xml, $e->responseXml);
+        }
+    }
+
+    public function testHandlesServerErrorsWithoutStructuredCode(): void {
+        $xml = <<<XML
+        <?xml version="1.0" encoding="UTF-8"?>
+        <env:Envelope xmlns:env="http://schemas.xmlsoap.org/soap/envelope/">
+            <env:Body>
+                <env:Fault>
+                    <faultcode>env:Server</faultcode>
+                    <faultstring>Unexpected server error without a code prefix</faultstring>
+                </env:Fault>
+            </env:Body>
+        </env:Envelope>
+        XML;
+        try {
+            AeatResponse::fromXml($xml);
+            $this->fail('Did not throw exception for server error response');
+        } catch (AeatException $e) {
+            $this->assertNull($e->aeatErrorCode);
         }
     }
 

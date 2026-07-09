@@ -39,7 +39,7 @@ class QueryResponse extends Model {
         // Handle server errors
         $faultElement = $xml->get("{{$nsEnv}}Body/{{$nsEnv}}Fault/faultstring");
         if ($faultElement !== null) {
-            throw new AeatException($faultElement->asText());
+            throw AeatException::fromFaultString($faultElement->asText());
         }
 
         // Get root XML element

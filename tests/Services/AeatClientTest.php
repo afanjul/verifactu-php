@@ -205,6 +205,7 @@ final class AeatClientTest extends TestCase {
             $this->assertStringContainsString('Codigo[20009].Error interno en el servidor', $e->getMessage());
             $this->assertNotNull($e->requestXml);
             $this->assertSame($responseXml, $e->responseXml);
+            $this->assertSame(20009, $e->aeatErrorCode);
         }
     }
 

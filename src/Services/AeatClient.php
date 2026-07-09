@@ -291,6 +291,7 @@ class AeatClient {
                         $e,
                         requestXml: $requestXml,
                         responseXml: $responseXml,
+                        aeatErrorCode: $e->aeatErrorCode,
                     );
                 }
             }, fn (Throwable $e) => throw new AeatException(
