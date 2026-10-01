@@ -40,7 +40,7 @@ final class BreakdownDetailsTest extends TestCase {
     public function testValidatesSurchargeAmount(): void {
         $details = new BreakdownDetails();
         $details->taxType = TaxType::IVA;
-        $details->regimeType = RegimeType::C18;
+        $details->regimeType = RegimeType::C01;
         $details->operationType = OperationType::Subject;
         $details->baseAmount = '33.22';
         $details->taxRate = '21.00';
@@ -87,29 +87,39 @@ final class BreakdownDetailsTest extends TestCase {
             $this->assertStringContainsString('Tax amount must be defined for subject operation types', $e->getMessage());
         }
 
-        // Missing surcharge details for C18 regimes
-        $details->regimeType = RegimeType::C18;
+        // Surcharge is not tied to the regime key (AEAT removed 15.6.9 in v1.1.2):
+        // a supplier under C01 charges it, a retailer under C18 issues without it
         $details->taxRate = '21.00';
         $details->taxAmount = '21.00';
-        try {
-            $details->validate();
-            $this->fail('Did not throw exception for missing surcharge rate and amount');
-        } catch (InvalidModelException $e) {
-            $this->assertStringContainsString('Surcharge rate must be defined for C18 regime type', $e->getMessage());
-            $this->assertStringContainsString('Surcharge amount must be defined for C18 regime type', $e->getMessage());
-        }
-
-        // Extra surcharge details for C01 regimes
+        $details->regimeType = RegimeType::C18;
+        $details->validate();
         $details->regimeType = RegimeType::C01;
         $details->surchargeRate = '5.20';
         $details->surchargeAmount = '5.20';
+        $details->validate();
+
+        // Surcharge rate and amount go together (AEAT 1284)
+        $details->surchargeAmount = null;
         try {
             $details->validate();
-            $this->fail('Did not throw exception for extra surcharge rate and amount');
+            $this->fail('Did not throw exception for surcharge rate without amount');
         } catch (InvalidModelException $e) {
-            $this->assertStringContainsString('Surcharge rate cannot be defined for non-C18 regime types', $e->getMessage());
-            $this->assertStringContainsString('Surcharge amount cannot be defined for non-C18 regime types', $e->getMessage());
+            $this->assertStringContainsString('Surcharge rate and amount must be defined together', $e->getMessage());
         }
+
+        // Surcharge only for S1 operations (AEAT 1281)
+        $details->surchargeAmount = '5.20';
+        $details->operationType = OperationType::PassiveSubject;
+        $details->taxRate = '0.00';
+        $details->taxAmount = '0.00';
+        try {
+            $details->validate();
+            $this->fail('Did not throw exception for surcharge on S2 operation');
+        } catch (InvalidModelException $e) {
+            $this->assertStringContainsString('Surcharge can only be defined for S1 operation type', $e->getMessage());
+        }
+        $details->taxRate = '21.00';
+        $details->taxAmount = '21.00';
 
         // Extra tax details for exempt operations
         $details->operationType = OperationType::ExemptByArticle20;

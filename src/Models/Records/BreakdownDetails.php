@@ -174,37 +174,30 @@ class BreakdownDetails extends Model {
         return $model;
     }
 
+    /**
+     * Equivalence surcharge fields, per the AEAT validations in force (v1.1.2):
+     * - 1284: TipoRecargoEquivalencia and CuotaRecargoEquivalencia go together
+     * - 1281: they may only be informed when CalificacionOperacion is "S1"
+     *
+     * The surcharge is not tied to ClaveRegimen: a supplier in the general regime (01)
+     * charges it to a retailer, and the retailer itself issues under 18 without it.
+     * The old 15.6.9 coupling with ClaveRegimen 18 was removed by the AEAT in v1.0.7
+     * and dropped as obsolete in v1.1.2.
+     */
     #[Assert\Callback]
-    final public function validateRegimeType(ExecutionContextInterface $context): void {
-        if (!isset($this->regimeType)) {
+    final public function validateSurcharge(ExecutionContextInterface $context): void {
+        if (($this->surchargeRate === null) !== ($this->surchargeAmount === null)) {
+            $context->buildViolation('Surcharge rate and amount must be defined together')
+                ->atPath($this->surchargeRate === null ? 'surchargeRate' : 'surchargeAmount')
+                ->addViolation();
+        }
+        if (!isset($this->operationType) || $this->operationType !== OperationType::PassiveSubject) {
             return;
         }
-        if (!$this->operationType->isSubject()) {
-            return;
-        }
-
-        if ($this->regimeType === RegimeType::C18) {
-            if ($this->surchargeRate === null) {
-                $context->buildViolation('Surcharge rate must be defined for C18 regime type')
-                    ->atPath('surchargeRate')
-                    ->addViolation();
-            }
-            if ($this->surchargeAmount === null) {
-                $context->buildViolation('Surcharge amount must be defined for C18 regime type')
-                    ->atPath('surchargeAmount')
-                    ->addViolation();
-            }
-        } else {
-            if ($this->surchargeRate !== null) {
-                $context->buildViolation('Surcharge rate cannot be defined for non-C18 regime types')
-                    ->atPath('surchargeRate')
-                    ->addViolation();
-            }
-            if ($this->surchargeAmount !== null) {
-                $context->buildViolation('Surcharge amount cannot be defined for non-C18 regime types')
-                    ->atPath('surchargeAmount')
-                    ->addViolation();
-            }
+        if ($this->surchargeRate !== null || $this->surchargeAmount !== null) {
+            $context->buildViolation('Surcharge can only be defined for S1 operation type')
+                ->atPath('surchargeRate')
+                ->addViolation();
         }
     }
 
